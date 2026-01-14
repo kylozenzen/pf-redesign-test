@@ -2274,17 +2274,6 @@ const Workout = ({ profile, onSelectExercise, settings, setSettings, pinnedExerc
     return fuzzyMatchExercises(debouncedSearchQuery, pool);
   }, [debouncedSearchQuery, filteredPool]);
 
-  const quickAddIds = useMemo(() => {
-    const fallback = ['bb_bench', 'bb_squat', 'bb_deadlift', 'lat_pulldown', 'shoulder_press'];
-    const availableQuick = availableEquipment.filter(id => !EQUIPMENT_DB[id]?.comingSoon);
-    const ranked = Object.entries(exerciseUsageCounts || {})
-      .filter(([id]) => availableQuick.includes(id))
-      .sort((a, b) => b[1] - a[1])
-      .map(([id]) => id);
-    const source = ranked.length > 0 ? ranked : fallback;
-    return source.filter(id => availableQuick.includes(id)).slice(0, 5);
-  }, [exerciseUsageCounts, availableEquipment]);
-
   const togglePin = (id) => {
     if (EQUIPMENT_DB[id]?.comingSoon) return;
     const exists = pinnedExercises.includes(id);
@@ -2550,22 +2539,6 @@ const Workout = ({ profile, onSelectExercise, settings, setSettings, pinnedExerc
                 {isSessionMode ? 'Cancel workout' : 'Cancel draft'}
               </button>
             </div>
-            {quickAddIds.length > 0 && (
-              <div className="space-y-2">
-                <div className="text-xs font-bold workout-muted uppercase">Quick Add</div>
-                <div className="filter-chip-row no-scrollbar">
-                  {quickAddIds.map(id => (
-                    <button
-                      key={id}
-                      onClick={() => handleSearchAdd(id)}
-                      className="filter-chip workout-chip"
-                    >
-                      {EQUIPMENT_DB[id]?.name || 'Exercise'}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
             {sessionEntries.length === 0 ? (
               <div className="text-xs workout-muted">Workout ready. Add exercises to get started.</div>
             ) : (
@@ -3138,7 +3111,7 @@ const PlateCalculator = ({ targetWeight, barWeight, onClose }) => {
 
       return (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 backdrop-blur-sm">
-          <div className="bg-white w-full max-w-md rounded-t-3xl shadow-2xl flex flex-col animate-slide-up" style={{maxHeight: '90vh'}}>
+          <div className="bg-white dark-mode-modal w-full max-w-md rounded-t-3xl shadow-2xl flex flex-col animate-slide-up" style={{maxHeight: '90vh'}}>
             <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-white rounded-t-3xl flex-shrink-0">
               <div className="flex items-center gap-3">
                 <button onClick={handleClose} className="text-gray-500 hover:text-gray-700 transition-colors">
@@ -5375,6 +5348,7 @@ const CardioLogger = ({ id, onClose, onUpdateSessionLogs, sessionLogs }) => {
         }
         if (!id) return;
         if (!activeSessionToday) return;
+        if (activeSessionToday?.status !== 'active') return;
         if (EQUIPMENT_DB[id]?.comingSoon) return;
         if (mode === 'session') {
           if (!activeSessionToday?.items?.some(item => (item.exerciseId || item.id) === id)) return;
