@@ -12,6 +12,15 @@ const { useState, useEffect, useMemo, useRef, useCallback } = React;
       MESSAGE_DURATION: 3200,
       DEBOUNCE_STORAGE: 500
     };
+    const DEBUG_LOG = typeof localStorage !== 'undefined' && localStorage.getItem('ps_debug') === 'true';
+    const debugLog = (tag, payload) => {
+      if (!DEBUG_LOG) return;
+      if (payload !== undefined) {
+        console.log(`[ps-debug] ${tag}`, payload);
+      } else {
+        console.log(`[ps-debug] ${tag}`);
+      }
+    };
 
     // ========== PWA SETUP ==========
     // Confirm manifest + icon links (guarded for templates that omit them).
@@ -2417,7 +2426,7 @@ const Workout = ({ profile, onSelectExercise, settings, setSettings, pinnedExerc
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto pb-28 px-4 space-y-4 workout-scroll">
+      <div className={`flex-1 overflow-y-auto pb-28 px-4 space-y-4 workout-scroll ${isSessionMode ? 'workout-scroll--with-footer' : ''}`}>
         <Card className="space-y-3 workout-card mt-5 start-today-card">
           <div>
             <div className="text-xs font-bold workout-muted uppercase">Start Today</div>
@@ -4285,6 +4294,7 @@ const CardioLogger = ({ id, onClose, onUpdateSessionLogs, sessionLogs }) => {
       const [showPostWorkout, setShowPostWorkout] = useState(false);
       const [postWorkoutQuote, setPostWorkoutQuote] = useState(null);
       const postWorkoutTimerRef = useRef(null);
+      const rageTapRef = useRef(new Map());
 
       const [appState, setAppState] = useState({
         lastWorkoutType: null,
@@ -4301,6 +4311,38 @@ const CardioLogger = ({ id, onClose, onUpdateSessionLogs, sessionLogs }) => {
       const [dismissedDraftDate, setDismissedDraftDate] = useState(null);
       const [quoteIndex, setQuoteIndex] = useState(() => Math.floor(Math.random() * motivationalQuotes.length));
       const [generatorOptions, setGeneratorOptions] = useState({ goal: '', duration: 45, equipment: '' });
+
+      useEffect(() => {
+        if (!DEBUG_LOG) return;
+        const rageTapWindow = 2000;
+        const rageTapThreshold = 5;
+        const handleRageTap = (event) => {
+          const target = event.target instanceof Element ? event.target : null;
+          if (!target) return;
+          const button = target.closest('button, [role="button"], a');
+          if (!button) return;
+          const identifier = button.getAttribute('aria-label')
+            || button.getAttribute('data-debug-id')
+            || button.id
+            || button.textContent?.trim().slice(0, 80)
+            || button.className
+            || 'unknown';
+          const now = Date.now();
+          const record = rageTapRef.current.get(identifier) || { count: 0, start: now };
+          if (now - record.start > rageTapWindow) {
+            record.count = 0;
+            record.start = now;
+          }
+          record.count += 1;
+          rageTapRef.current.set(identifier, record);
+          if (record.count >= rageTapThreshold) {
+            debugLog('rage_tap', { target: identifier });
+            rageTapRef.current.delete(identifier);
+          }
+        };
+        document.addEventListener('click', handleRageTap, true);
+        return () => document.removeEventListener('click', handleRageTap, true);
+      }, []);
 
       const normalizeActiveSession = (session) => {
         if (!session) return null;
@@ -4877,6 +4919,7 @@ const CardioLogger = ({ id, onClose, onUpdateSessionLogs, sessionLogs }) => {
         if (!activeSession) return;
         const hasData = Object.values(activeSession.logsByExercise || {}).some(sets => (sets || []).length > 0);
         if (activeSession.status !== 'active' && !hasData) return;
+        debugLog('workout_finish', { date: todayKey });
         const sessionDate = new Date().toISOString();
         const logsByExercise = activeSession.logsByExercise || {};
         const sessionExercises = activeSession.items || [];
@@ -5055,6 +5098,7 @@ const CardioLogger = ({ id, onClose, onUpdateSessionLogs, sessionLogs }) => {
       };
 
       const logRestDay = () => {
+        debugLog('rest_day', { date: todayKey });
         setAppState(prev => {
           const restDays = new Set(prev?.restDays || []);
           restDays.add(todayKey);
@@ -5092,6 +5136,7 @@ const CardioLogger = ({ id, onClose, onUpdateSessionLogs, sessionLogs }) => {
           if (!prev || prev.date !== todayKey) return prev;
           return { ...prev, status: 'active' };
         });
+        debugLog('workout_start', { date: todayKey });
       };
 
       const handleStartWorkout = () => {
@@ -5158,6 +5203,9 @@ const CardioLogger = ({ id, onClose, onUpdateSessionLogs, sessionLogs }) => {
         });
         if (options.toast && didAdd) {
           showToast('Added to today’s workout');
+        }
+        if (didAdd) {
+          debugLog('exercise_add', { id });
         }
       };
 
