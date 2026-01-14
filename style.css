@@ -449,6 +449,22 @@ body.app-shell {
   border-color: var(--accent) !important;
 }
 
+body.dark-mode .dark-mode-modal .bg-purple-50 {
+  background: var(--surface-2) !important;
+  border-color: var(--border) !important;
+}
+
+body.dark-mode .dark-mode-modal .bg-purple-200 {
+  background: var(--surface-2) !important;
+  color: var(--muted) !important;
+}
+
+body.dark-mode .dark-mode-modal .border-purple-200,
+body.dark-mode .dark-mode-modal .border-purple-300,
+body.dark-mode .dark-mode-modal .border-purple-400 {
+  border-color: var(--border) !important;
+}
+
 .bg-orange-50,
 .bg-yellow-50,
 .bg-blue-50,
@@ -620,7 +636,7 @@ textarea::placeholder {
 
 .exercise-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
 }
 
