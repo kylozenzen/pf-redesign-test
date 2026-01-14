@@ -537,6 +537,23 @@ textarea::placeholder {
   z-index: 1200;
 }
 
+.toast--undo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.toast-action {
+  border: none;
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 12px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
 .baseline-card {
   background: var(--surface-2);
   border: 1px solid var(--border);

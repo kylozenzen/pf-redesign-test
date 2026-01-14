@@ -1271,6 +1271,16 @@ const motivationalQuotes = [
       );
     };
 
+    const UndoToast = ({ message, onUndo }) => {
+      if (!message) return null;
+      return (
+        <div className="toast toast--undo" role="status" aria-live="polite">
+          <span>{message}</span>
+          <button onClick={onUndo} className="toast-action">Undo</button>
+        </div>
+      );
+    };
+
     const TabBar = ({ currentTab, setTab, onWorkoutTripleTap }) => {
       const tapCountRef = React.useRef(0);
       const tapTimerRef = React.useRef(null);
@@ -2176,7 +2186,7 @@ const Home = ({
   );
 };
 
-const Workout = ({ profile, onSelectExercise, settings, setSettings, pinnedExercises, setPinnedExercises, recentExercises, activeSession, onFinishSession, onStartWorkoutFromBuilder, onAddExerciseFromSearch, onPushMessage, onRemoveSessionExercise, onSwapSessionExercise, onStartEmptySession, isRestDay, onCancelSession, sessionIntent }) => {
+const Workout = ({ profile, onSelectExercise, settings, setSettings, pinnedExercises, setPinnedExercises, recentExercises, favoriteExercises, onToggleFavorite, exerciseUsageCounts, activeSession, onFinishSession, onStartWorkoutFromBuilder, onAddExerciseFromSearch, onPushMessage, onRemoveSessionExercise, onSwapSessionExercise, onStartEmptySession, isRestDay, onCancelSession, sessionIntent }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const debouncedSearchQuery = useDebounce(searchQuery, 200);
   const [libraryVisible, setLibraryVisible] = useState(settings.showAllExercises);
@@ -2203,7 +2213,8 @@ const Workout = ({ profile, onSelectExercise, settings, setSettings, pinnedExerc
   }, [gymType]);
 
   const filteredPinned = pinnedExercises.filter(id => availableEquipment.includes(id));
-  const filteredRecents = recentExercises.filter(id => availableEquipment.includes(id)).slice(0, 12);
+  const filteredRecents = recentExercises.filter(id => availableEquipment.includes(id)).slice(0, 10);
+  const filteredFavorites = (favoriteExercises || []).filter(id => availableEquipment.includes(id));
   const todayKey = toDayKey(new Date());
   const sessionEntries = useMemo(() => {
     if (!activeSession || activeSession.date !== todayKey) return [];
@@ -2262,6 +2273,17 @@ const Workout = ({ profile, onSelectExercise, settings, setSettings, pinnedExerc
     if (!debouncedSearchQuery.trim()) return [];
     return fuzzyMatchExercises(debouncedSearchQuery, pool);
   }, [debouncedSearchQuery, filteredPool]);
+
+  const quickAddIds = useMemo(() => {
+    const fallback = ['bb_bench', 'bb_squat', 'bb_deadlift', 'lat_pulldown', 'shoulder_press'];
+    const availableQuick = availableEquipment.filter(id => !EQUIPMENT_DB[id]?.comingSoon);
+    const ranked = Object.entries(exerciseUsageCounts || {})
+      .filter(([id]) => availableQuick.includes(id))
+      .sort((a, b) => b[1] - a[1])
+      .map(([id]) => id);
+    const source = ranked.length > 0 ? ranked : fallback;
+    return source.filter(id => availableQuick.includes(id)).slice(0, 5);
+  }, [exerciseUsageCounts, availableEquipment]);
 
   const togglePin = (id) => {
     if (EQUIPMENT_DB[id]?.comingSoon) return;
@@ -2327,6 +2349,14 @@ const Workout = ({ profile, onSelectExercise, settings, setSettings, pinnedExerc
         </div>
         <div className="flex items-center gap-2">
           <button
+            onClick={(e) => { e.stopPropagation(); onToggleFavorite?.(id); }}
+            disabled={isComingSoon}
+            aria-label={`${favoriteExercises?.includes(id) ? 'Unfavorite' : 'Favorite'} ${eq.name}`}
+            className={`w-8 h-8 rounded-full flex items-center justify-center ${favoriteExercises?.includes(id) ? 'text-yellow-500 bg-yellow-50' : 'text-gray-400 bg-gray-100'} ${isComingSoon ? 'opacity-50 cursor-not-allowed' : ''}`}
+          >
+            <Icon name="Star" className="w-4 h-4" />
+          </button>
+          <button
             onClick={(e) => { e.stopPropagation(); togglePin(id); }}
             disabled={isComingSoon}
             className={`px-2 py-1 rounded-full text-xs font-bold ${pinnedExercises.includes(id) ? 'workout-chip' : 'bg-gray-100 text-gray-500'} ${
@@ -2366,6 +2396,14 @@ const Workout = ({ profile, onSelectExercise, settings, setSettings, pinnedExerc
           <div className="text-[11px] text-gray-400 font-semibold mt-1">Coming Soon</div>
         )}
         <div className="tile-actions">
+          <button
+            onClick={() => onToggleFavorite?.(id)}
+            disabled={isComingSoon}
+            className={`tile-action ${favoriteExercises?.includes(id) ? 'workout-chip' : ''} ${isComingSoon ? 'opacity-50 cursor-not-allowed' : ''}`}
+            aria-label={`${favoriteExercises?.includes(id) ? 'Unfavorite' : 'Favorite'} ${eq.name}`}
+          >
+            <Icon name="Star" className="w-4 h-4" />
+          </button>
           <button
             onClick={() => togglePin(id)}
             disabled={isComingSoon}
@@ -2512,6 +2550,22 @@ const Workout = ({ profile, onSelectExercise, settings, setSettings, pinnedExerc
                 {isSessionMode ? 'Cancel workout' : 'Cancel draft'}
               </button>
             </div>
+            {quickAddIds.length > 0 && (
+              <div className="space-y-2">
+                <div className="text-xs font-bold workout-muted uppercase">Quick Add</div>
+                <div className="filter-chip-row no-scrollbar">
+                  {quickAddIds.map(id => (
+                    <button
+                      key={id}
+                      onClick={() => handleSearchAdd(id)}
+                      className="filter-chip workout-chip"
+                    >
+                      {EQUIPMENT_DB[id]?.name || 'Exercise'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
             {sessionEntries.length === 0 ? (
               <div className="text-xs workout-muted">Workout ready. Add exercises to get started.</div>
             ) : (
@@ -2534,6 +2588,12 @@ const Workout = ({ profile, onSelectExercise, settings, setSettings, pinnedExerc
                     </div>
                     <div className="flex items-center gap-2">
                       <div className="text-xs font-bold text-purple-600">{entrySetCount} {entry.kind === 'cardio' ? 'entries' : 'sets'}</div>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); onSelectExercise(entryId, 'session'); }}
+                        className="session-action-button"
+                      >
+                        + Set
+                      </button>
                       {entry.kind !== 'cardio' && (
                         <button
                           onClick={(e) => { e.stopPropagation(); setSwapState({ mode: 'session', index: idx }); }}
@@ -2574,31 +2634,43 @@ const Workout = ({ profile, onSelectExercise, settings, setSettings, pinnedExerc
         )}
 
         {!isRestDay && !isSessionMode && (isDraft || libraryVisible || searchQuery) && (
-        <Card className="space-y-2 workout-card">
-          <div className="flex items-center justify-between">
-            <div className="text-xs font-bold workout-muted uppercase">Pinned Exercises</div>
-            <div className="text-xs workout-muted">Tap to add</div>
-          </div>
-          {filteredPinned.length === 0 ? (
-            <div className="text-xs workout-muted">Pin your go-tos for quick access.</div>
-          ) : (
-            <div className="exercise-grid">
-              {filteredPinned.map(renderExerciseTile)}
-            </div>
-          )}
-        </Card>
-        )}
-
-        {!isRestDay && filteredRecents.length > 0 && (
-          <Card className="space-y-2 workout-card">
-            <div className="flex items-center justify-between">
-              <div className="text-xs font-bold workout-muted uppercase">Recent</div>
-              <div className="text-xs workout-muted">Last used</div>
-            </div>
-            <div className="space-y-2">
-              {filteredRecents.map(id => renderExerciseRow(id, 'Add'))}
-            </div>
-          </Card>
+          <>
+            {filteredFavorites.length > 0 && (
+              <Card className="space-y-2 workout-card">
+                <div className="flex items-center justify-between">
+                  <div className="text-xs font-bold workout-muted uppercase">Favorites</div>
+                  <div className="text-xs workout-muted">Starred</div>
+                </div>
+                <div className="space-y-2">
+                  {filteredFavorites.map(id => renderExerciseRow(id, 'Add'))}
+                </div>
+              </Card>
+            )}
+            {filteredRecents.length > 0 && (
+              <Card className="space-y-2 workout-card">
+                <div className="flex items-center justify-between">
+                  <div className="text-xs font-bold workout-muted uppercase">Recent</div>
+                  <div className="text-xs workout-muted">Last used</div>
+                </div>
+                <div className="space-y-2">
+                  {filteredRecents.map(id => renderExerciseRow(id, 'Add'))}
+                </div>
+              </Card>
+            )}
+            <Card className="space-y-2 workout-card">
+              <div className="flex items-center justify-between">
+                <div className="text-xs font-bold workout-muted uppercase">Pinned Exercises</div>
+                <div className="text-xs workout-muted">Tap to add</div>
+              </div>
+              {filteredPinned.length === 0 ? (
+                <div className="text-xs workout-muted">Pin your go-tos for quick access.</div>
+              ) : (
+                <div className="exercise-grid">
+                  {filteredPinned.map(renderExerciseTile)}
+                </div>
+              )}
+            </Card>
+          </>
         )}
 
         {libraryVisible && !isRestDay && (
@@ -2780,7 +2852,7 @@ const PlateCalculator = ({ targetWeight, barWeight, onClose }) => {
     };
 
     // ========== EQUIPMENT DETAIL ==========
-    const EquipmentDetail = ({ id, profile, history, settings, onSave, onClose, onUpdateSessionLogs, sessionLogs }) => {
+    const EquipmentDetail = ({ id, profile, history, settings, onSave, onClose, onUpdateSessionLogs, sessionLogs, onRequestUndo, onShowToast, autoFocusInput, onAutoFocusComplete }) => {
       const eq = EQUIPMENT_DB[id];
       const sessions = history || [];
       const insightsEnabled = settings?.insightsEnabled !== false;
@@ -2884,6 +2956,14 @@ const PlateCalculator = ({ targetWeight, barWeight, onClose }) => {
         }));
       }, [anchorWeight, anchorReps]);
 
+      useEffect(() => {
+        if (!autoFocusInput) return;
+        requestAnimationFrame(() => {
+          (weightInputRef.current || repsInputRef.current)?.focus();
+        });
+        onAutoFocusComplete?.();
+      }, [autoFocusInput, onAutoFocusComplete]);
+
       const syncSessionSets = (nextSets) => {
         if (onUpdateSessionLogs) {
           onUpdateSessionLogs(id, nextSets);
@@ -2911,6 +2991,7 @@ const PlateCalculator = ({ targetWeight, barWeight, onClose }) => {
         });
         setTimeout(() => setIsAddingSet(false), 300);
         setEditingIndex(null);
+        onShowToast?.('Set saved');
       };
 
       const startEditSet = (idx) => {
@@ -2930,15 +3011,28 @@ const PlateCalculator = ({ targetWeight, barWeight, onClose }) => {
           return next;
         });
         setEditingIndex(null);
+        onShowToast?.('Set saved');
       };
 
       const deleteSet = (idx) => {
-        setLoggedSets(prev => {
-          const next = prev.filter((_, i) => i !== idx);
-          syncSessionSets(next);
-          return next;
-        });
+        const removed = loggedSets[idx];
+        if (!removed) return;
+        const next = loggedSets.filter((_, i) => i !== idx);
+        setLoggedSets(next);
+        syncSessionSets(next);
         setEditingIndex(null);
+        onRequestUndo?.({
+          message: 'Removed.',
+          onUndo: () => {
+            setLoggedSets(prev => {
+              const restored = [...prev];
+              const insertAt = Math.min(idx, restored.length);
+              restored.splice(insertAt, 0, removed);
+              syncSessionSets(restored);
+              return restored;
+            });
+          }
+        });
       };
 
       const buildSessionPayload = (draft) => {
@@ -4275,6 +4369,7 @@ const CardioLogger = ({ id, onClose, onUpdateSessionLogs, sessionLogs }) => {
       const [tab, setTab] = useState('home');
       const [activeEquipment, setActiveEquipment] = useState(null);
       const [activeCardio, setActiveCardio] = useState(null);
+      const [pendingAutoFocusExercise, setPendingAutoFocusExercise] = useState(null);
       const [view, setView] = useState('onboarding');
       const [showAnalytics, setShowAnalytics] = useState(false);
       const [showMatrix, setShowMatrix] = useState(false);
@@ -4289,6 +4384,9 @@ const CardioLogger = ({ id, onClose, onUpdateSessionLogs, sessionLogs }) => {
       const messageTimerRef = useRef(null);
       const [toastMessage, setToastMessage] = useState(null);
       const toastTimerRef = useRef(null);
+      const [undoToast, setUndoToast] = useState(null);
+      const undoTimerRef = useRef(null);
+      const undoActionRef = useRef(null);
       const [sessionStartNotice, setSessionStartNotice] = useState(null);
       const sessionStartTimerRef = useRef(null);
       const [showPostWorkout, setShowPostWorkout] = useState(false);
@@ -4303,6 +4401,7 @@ const CardioLogger = ({ id, onClose, onUpdateSessionLogs, sessionLogs }) => {
       });
 
       const [pinnedExercises, setPinnedExercises] = useState([]);
+      const [favoriteExercises, setFavoriteExercises] = useState([]);
       const [recentExercises, setRecentExercises] = useState([]);
       const [exerciseUsageCounts, setExerciseUsageCounts] = useState({});
       const [dayEntries, setDayEntries] = useState({});
@@ -4425,6 +4524,7 @@ const CardioLogger = ({ id, onClose, onUpdateSessionLogs, sessionLogs }) => {
         const savedTodayWorkout = storage.get(TODAY_WORKOUT_KEY, null);
         const savedActiveSession = storage.get(ACTIVE_SESSION_KEY, null);
         const savedDraftSession = storage.get(DRAFT_SESSION_KEY, null);
+        const savedFavorites = storage.get('favoritesExercises', []);
         const normalizedActiveSession = normalizeActiveSession(
           savedTodaySession || savedTodayWorkout || savedActiveSession || savedDraftSession
         );
@@ -4484,6 +4584,7 @@ const CardioLogger = ({ id, onClose, onUpdateSessionLogs, sessionLogs }) => {
         }
 
         setPinnedExercises(metaToUse.pinnedExercises || []);
+        setFavoriteExercises(Array.isArray(savedFavorites) ? savedFavorites : []);
         setRecentExercises(metaToUse.recentExercises || []);
         setExerciseUsageCounts(metaToUse.exerciseUsageCounts || {});
         setDayEntries(metaToUse.dayEntries || {});
@@ -4498,6 +4599,7 @@ const CardioLogger = ({ id, onClose, onUpdateSessionLogs, sessionLogs }) => {
         }
       }, [profile, loaded]);
       useEffect(() => { if(loaded) storage.set('ps_v2_settings', settings); }, [settings, loaded]);
+      useEffect(() => { if(loaded) storage.set('favoritesExercises', favoriteExercises); }, [favoriteExercises, loaded]);
       useEffect(() => {
         if (!loaded) return;
         const persist = () => storage.set('ps_v2_history', history);
@@ -4559,6 +4661,12 @@ const CardioLogger = ({ id, onClose, onUpdateSessionLogs, sessionLogs }) => {
       }, []);
 
       useEffect(() => {
+        return () => {
+          if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
+        };
+      }, []);
+
+      useEffect(() => {
         if (!sessionStartNotice) return;
         if (sessionStartTimerRef.current) clearTimeout(sessionStartTimerRef.current);
         sessionStartTimerRef.current = setTimeout(() => setSessionStartNotice(null), 4000);
@@ -4579,6 +4687,31 @@ const CardioLogger = ({ id, onClose, onUpdateSessionLogs, sessionLogs }) => {
         setToastMessage(text);
         if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
         toastTimerRef.current = setTimeout(() => setToastMessage(null), 1500);
+      };
+
+      const showUndoToast = ({ message, onUndo, onCommit }) => {
+        if (undoTimerRef.current) {
+          clearTimeout(undoTimerRef.current);
+          if (undoActionRef.current?.onCommit) {
+            undoActionRef.current.onCommit();
+          }
+        }
+        undoActionRef.current = { onUndo, onCommit };
+        setUndoToast({ message });
+        undoTimerRef.current = setTimeout(() => {
+          const commit = undoActionRef.current?.onCommit;
+          undoActionRef.current = null;
+          setUndoToast(null);
+          if (commit) commit();
+        }, 3000);
+      };
+
+      const handleUndoAction = () => {
+        if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
+        const undo = undoActionRef.current?.onUndo;
+        undoActionRef.current = null;
+        setUndoToast(null);
+        if (undo) undo();
       };
 
       useEffect(() => {
@@ -4692,6 +4825,14 @@ const CardioLogger = ({ id, onClose, onUpdateSessionLogs, sessionLogs }) => {
           const lastSet = sets[sets.length - 1];
           setLastExerciseStats(prev => ({ ...prev, [exerciseId]: { weight: lastSet.weight, reps: lastSet.reps } }));
         }
+      };
+
+      const toggleFavoriteExercise = (exerciseId) => {
+        if (!exerciseId) return;
+        setFavoriteExercises(prev => prev.includes(exerciseId)
+          ? prev.filter(id => id !== exerciseId)
+          : [...prev, exerciseId]
+        );
       };
 
       const todayKey = toDayKey(new Date());
@@ -5202,7 +5343,7 @@ const CardioLogger = ({ id, onClose, onUpdateSessionLogs, sessionLogs }) => {
           return { ...base, status: nextStatus, createdFrom: base.createdFrom || options.createdFrom || 'manual', items, logsByExercise };
         });
         if (options.toast && didAdd) {
-          showToast('Added to today’s workout');
+          showToast('Exercise added');
         }
         if (didAdd) {
           debugLog('exercise_add', { id });
@@ -5224,6 +5365,13 @@ const CardioLogger = ({ id, onClose, onUpdateSessionLogs, sessionLogs }) => {
         }
         
         addExerciseToSession(id, { status: activeSessionToday?.status === 'active' ? 'active' : 'draft', toast: true });
+        const eq = EQUIPMENT_DB[id];
+        if (eq?.type === 'cardio') {
+          setActiveCardio(id);
+          return;
+        }
+        setActiveEquipment(id);
+        setPendingAutoFocusExercise(id);
       };
 
       const handleSelectExercise = (id, mode, options = {}) => {
@@ -5248,13 +5396,11 @@ const CardioLogger = ({ id, onClose, onUpdateSessionLogs, sessionLogs }) => {
 
       const removeSessionExercise = (id) => {
         if (!id || !activeSessionToday) return;
-        const entry = activeSessionToday.items?.find(item => (item.exerciseId || item.id) === id);
-        const hasLoggedSets = (activeSessionToday.logsByExercise?.[id] || []).length > 0;
-        if (hasLoggedSets) {
-          const confirmed = window.confirm('This will remove logged sets for this exercise from today’s session.');
-          if (!confirmed) return;
-          removeExerciseLogsForToday(id, entry.kind);
-        }
+        const entryIndex = activeSessionToday.items?.findIndex(item => (item.exerciseId || item.id) === id);
+        const entry = activeSessionToday.items?.[entryIndex];
+        const logs = activeSessionToday.logsByExercise?.[id] || [];
+        const draftIndex = draftPlanToday?.exercises?.findIndex(exId => exId === id);
+        const hadDraftEntry = Number.isInteger(draftIndex) && draftIndex >= 0;
         setActiveSession(prev => {
           if (!prev || prev.date !== todayKey) return prev;
           const logsByExercise = { ...(prev.logsByExercise || {}) };
@@ -5262,6 +5408,37 @@ const CardioLogger = ({ id, onClose, onUpdateSessionLogs, sessionLogs }) => {
           return { ...prev, items: (prev.items || []).filter(item => (item.exerciseId || item.id) !== id), logsByExercise };
         });
         updateDraftPlanExercises(prev => prev.filter(exId => exId !== id));
+        showUndoToast({
+          message: 'Removed.',
+          onUndo: () => {
+            setActiveSession(prev => {
+              if (!prev || prev.date !== todayKey) return prev;
+              const items = [...(prev.items || [])];
+              const logsByExercise = { ...(prev.logsByExercise || {}) };
+              if (!items.some(item => (item.exerciseId || item.id) === id)) {
+                const insertAt = Number.isInteger(entryIndex) ? entryIndex : items.length;
+                const restoredEntry = entry || buildSessionItem(id);
+                items.splice(Math.min(insertAt, items.length), 0, restoredEntry);
+              }
+              logsByExercise[id] = logs;
+              return { ...prev, items, logsByExercise };
+            });
+            if (hadDraftEntry) {
+              updateDraftPlanExercises(prev => {
+                if (prev.includes(id)) return prev;
+                const next = [...prev];
+                const insertAt = Number.isInteger(draftIndex) ? draftIndex : next.length;
+                next.splice(Math.min(insertAt, next.length), 0, id);
+                return next;
+              });
+            }
+          },
+          onCommit: () => {
+            if (logs.length > 0) {
+              removeExerciseLogsForToday(id, entry?.kind || 'strength');
+            }
+          }
+        });
       };
 
       const swapSessionExercise = (index, newId) => {
@@ -5413,6 +5590,7 @@ const CardioLogger = ({ id, onClose, onUpdateSessionLogs, sessionLogs }) => {
           setAppState({ lastWorkoutType: null, lastWorkoutDayKey: null, restDays: [] });
           setSettings({ insightsEnabled: true, darkMode: false, darkAccent: 'purple', showAllExercises: false, pinnedExercises: [], workoutViewMode: 'all', suggestedWorkoutCollapsed: true });
           setPinnedExercises([]);
+          setFavoriteExercises([]);
           setRecentExercises([]);
           setExerciseUsageCounts({});
           setDayEntries({});
@@ -5432,6 +5610,7 @@ const CardioLogger = ({ id, onClose, onUpdateSessionLogs, sessionLogs }) => {
           storage.set(TODAY_WORKOUT_KEY, null);
           storage.set(TODAY_SESSION_KEY, null);
           storage.set(REST_DAY_KEY, []);
+          storage.set('favoritesExercises', []);
         }
       };
 
@@ -5613,6 +5792,7 @@ return (
             <div className="flex-1 overflow-hidden">
               <InlineMessage message={tab === 'home' && inlineMessage === 'Workout saved.' ? null : inlineMessage} />
               <Toast message={toastMessage} />
+              <UndoToast message={undoToast?.message} onUndo={handleUndoAction} />
               {showPostWorkout && (
                 <div className="post-workout-screen" onClick={() => setShowPostWorkout(false)}>
                   <div className="post-workout-card" onClick={(e) => e.stopPropagation()}>
@@ -5688,6 +5868,9 @@ return (
                       pinnedExercises={pinnedExercises}
                       setPinnedExercises={setPinnedExercises}
                       recentExercises={recentExercises}
+                      favoriteExercises={favoriteExercises}
+                      onToggleFavorite={toggleFavoriteExercise}
+                      exerciseUsageCounts={exerciseUsageCounts}
                       onStartWorkoutFromBuilder={startWorkoutFromBuilder}
                       activeSession={activeSessionToday}
                       onFinishSession={finishActiveSession}
@@ -5730,7 +5913,14 @@ return (
                 onSave={handleSaveSession}
                 onUpdateSessionLogs={updateSessionLogs}
                 sessionLogs={activeSessionToday?.logsByExercise?.[activeEquipment] || []}
-                onClose={() => setActiveEquipment(null)}
+                onRequestUndo={showUndoToast}
+                onShowToast={showToast}
+                autoFocusInput={pendingAutoFocusExercise === activeEquipment}
+                onAutoFocusComplete={() => setPendingAutoFocusExercise(null)}
+                onClose={() => {
+                  setActiveEquipment(null);
+                  setPendingAutoFocusExercise(null);
+                }}
               />
             )}
 
