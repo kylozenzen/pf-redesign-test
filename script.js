@@ -2367,7 +2367,7 @@ const Workout = ({ profile, onSelectExercise, settings, setSettings, pinnedExerc
           </button>
           {allowAdd && (
             <button
-              onClick={(e) => { e.stopPropagation(); (onAction ? onAction(id) : onAddExerciseFromSearch?.(id)); }}
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); (onAction ? onAction(id) : onAddExerciseFromSearch?.(id)); }}
               className="text-purple-600 font-semibold text-sm"
             >
               {actionLabel}
@@ -2413,7 +2413,7 @@ const Workout = ({ profile, onSelectExercise, settings, setSettings, pinnedExerc
           </button>
           {allowAdd && (
             <button
-              onClick={() => onAddExerciseFromSearch?.(id)}
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); onAddExerciseFromSearch?.(id); }}
               className="tile-action primary"
             >
               Add
@@ -5365,13 +5365,6 @@ const CardioLogger = ({ id, onClose, onUpdateSessionLogs, sessionLogs }) => {
         }
         
         addExerciseToSession(id, { status: activeSessionToday?.status === 'active' ? 'active' : 'draft', toast: true });
-        const eq = EQUIPMENT_DB[id];
-        if (eq?.type === 'cardio') {
-          setActiveCardio(id);
-          return;
-        }
-        setActiveEquipment(id);
-        setPendingAutoFocusExercise(id);
       };
 
       const handleSelectExercise = (id, mode, options = {}) => {
@@ -5384,6 +5377,7 @@ const CardioLogger = ({ id, onClose, onUpdateSessionLogs, sessionLogs }) => {
         if (!activeSessionToday) return;
         if (EQUIPMENT_DB[id]?.comingSoon) return;
         if (mode === 'session') {
+          if (!activeSessionToday?.items?.some(item => (item.exerciseId || item.id) === id)) return;
           const entry = activeSessionToday?.items?.find(item => (item.exerciseId || item.id) === id);
           if (entry?.kind === 'cardio') {
             setActiveCardio(id);
