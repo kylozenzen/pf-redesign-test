@@ -1997,6 +1997,7 @@ const Home = ({
   onGenerate,
   homeQuote,
   isRestDay,
+  sessionIntent,
   onLogRestDay,
   onUndoRestDay,
   onTriggerGlory,
@@ -2061,6 +2062,12 @@ const Home = ({
     }
   };
 
+  const homeStartSubtext = sessionIntent === 'calm'
+    ? 'Draft a calm session in seconds.'
+    : sessionIntent === 'recovery'
+      ? 'Draft a recovery session in seconds.'
+      : 'Draft a session in seconds.';
+
   return (
     <div className="flex flex-col h-full bg-gray-50 home-screen">
       <div className="bg-white border-b border-gray-100 sticky top-0 z-20" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
@@ -2104,7 +2111,7 @@ const Home = ({
           </div>
           <div className="home-section-card">
             <div className="home-section-title">Start Today</div>
-            <div className="home-section-subtitle">Draft a session in seconds.</div>
+            <div className="home-section-subtitle">{homeStartSubtext}</div>
             <button
               onClick={onStartWorkout}
               className="home-primary-button"
@@ -2160,7 +2167,7 @@ const Home = ({
   );
 };
 
-const Workout = ({ profile, onSelectExercise, settings, setSettings, pinnedExercises, setPinnedExercises, recentExercises, activeSession, onFinishSession, onStartWorkoutFromBuilder, onAddExerciseFromSearch, onPushMessage, onRemoveSessionExercise, onSwapSessionExercise, onStartEmptySession, isRestDay, onCancelSession }) => {
+const Workout = ({ profile, onSelectExercise, settings, setSettings, pinnedExercises, setPinnedExercises, recentExercises, activeSession, onFinishSession, onStartWorkoutFromBuilder, onAddExerciseFromSearch, onPushMessage, onRemoveSessionExercise, onSwapSessionExercise, onStartEmptySession, isRestDay, onCancelSession, sessionIntent }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const debouncedSearchQuery = useDebounce(searchQuery, 200);
   const [libraryVisible, setLibraryVisible] = useState(settings.showAllExercises);
@@ -2201,6 +2208,13 @@ const Workout = ({ profile, onSelectExercise, settings, setSettings, pinnedExerc
   const sessionSetCount = sessionEntries.reduce((sum, entry) => sum + ((sessionLogsByExercise[entry.exerciseId || entry.id] || []).length), 0);
   const hasTodayWorkout = hasSession && activeSession?.date === todayKey;
   const isDraft = hasTodayWorkout && !isSessionMode;
+  const finishSummaryBase = `${sessionExerciseCount} exercises • ${sessionSetCount} sets`;
+  const finishSummaryIntent = sessionIntent === 'calm'
+    ? 'Calm pace'
+    : sessionIntent === 'recovery'
+      ? 'Recovery pace'
+      : '';
+  const finishSummaryText = finishSummaryIntent ? `${finishSummaryBase} • ${finishSummaryIntent}` : finishSummaryBase;
 
   const filterOptions = ['All', 'Chest', 'Back', 'Legs', 'Shoulders', 'Arms', 'Core', 'Cardio', 'Pinned'];
 
@@ -2607,7 +2621,7 @@ const Workout = ({ profile, onSelectExercise, settings, setSettings, pinnedExerc
         <div className="finish-footer">
           <div className="finish-bar">
             <div className="finish-summary text-sm font-semibold text-gray-600">
-              {sessionExerciseCount} exercises • {sessionSetCount} sets
+              {finishSummaryText}
             </div>
             <button
               onClick={onFinishSession}
@@ -4643,6 +4657,11 @@ const CardioLogger = ({ id, onClose, onUpdateSessionLogs, sessionLogs }) => {
       const draftPlanToday = draftPlan?.date === todayKey ? draftPlan : null;
       const restDayDates = Array.isArray(appState?.restDays) ? appState.restDays : [];
       const isRestDay = restDayDates.includes(todayKey);
+      const sessionIntent = useMemo(() => {
+        if (isRestDay) return 'recovery';
+        if (lastWorkoutLabel === 'Today') return 'calm';
+        return 'standard';
+      }, [isRestDay, lastWorkoutLabel]);
       const homeQuote = useMemo(() => getDailyQuote(homeQuotes, 'home'), [todayKey]);
       const suggestedFocus = useMemo(() => {
         const muscleGroups = ['Chest', 'Back', 'Legs', 'Shoulders', 'Arms', 'Core'];
@@ -5605,6 +5624,7 @@ return (
                       }}
                       homeQuote={homeQuote}
                       isRestDay={isRestDay}
+                      sessionIntent={sessionIntent}
                       onLogRestDay={logRestDay}
                       onUndoRestDay={undoRestDay}
                       onTriggerGlory={() => setShowGlory(true)}
@@ -5630,6 +5650,7 @@ return (
                       onStartEmptySession={startEmptySession}
                       isRestDay={isRestDay}
                       onCancelSession={cancelTodaySession}
+                      sessionIntent={sessionIntent}
                     />
                   )}
                   {tab === 'profile' && (
