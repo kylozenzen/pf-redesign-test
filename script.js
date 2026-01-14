@@ -1050,6 +1050,8 @@ const motivationalQuotes = [
     const TODAY_SESSION_KEY = 'ps_today_session';
     const REST_DAY_KEY = 'restDayDates';
     const LAST_OPEN_KEY = 'ps_last_open';
+    const THEME_MODE_KEY = 'ps_theme_mode';
+    const DARK_VARIANT_KEY = 'ps_dark_variant';
 
     const uniqueDayKeysFromHistory = (history, cardioHistory = {}, restDays = [], dayEntries = null) => {
       if (dayEntries && Object.keys(dayEntries).length > 0) {
@@ -3837,7 +3839,7 @@ const PlateCalculator = ({ targetWeight, barWeight, onClose }) => {
     };
 
     // ========== PROFILE TAB ==========
-    const ProfileView = ({ settings, setSettings, onViewAnalytics, onExportData, onImportData, onResetApp, onResetOnboarding }) => {
+    const ProfileView = ({ settings, setSettings, themeMode, darkVariant, setThemeMode, setDarkVariant, onViewAnalytics, onExportData, onImportData, onResetApp, onResetOnboarding }) => {
       const [workoutOpen, setWorkoutOpen] = useState(false);
       const [appearanceOpen, setAppearanceOpen] = useState(false);
       const [analyticsOpen, setAnalyticsOpen] = useState(false);
@@ -3846,10 +3848,11 @@ const PlateCalculator = ({ targetWeight, barWeight, onClose }) => {
       const [dataToolsOpen, setDataToolsOpen] = useState(false);
 
       const accentOptions = [
-        { id: 'purple', label: 'Purple', color: '#8B5CF6' },
-        { id: 'red', label: 'Dark Red', color: '#B91C1C' },
-        { id: 'gold', label: 'Gold', color: '#D97706' },
+        { id: 'red', label: 'Red', color: '#ef4444' },
+        { id: 'yellow', label: 'Yellow', color: '#f59e0b' },
+        { id: 'blue', label: 'Blue', color: '#3b82f6' },
       ];
+      const isDarkMode = themeMode === 'dark';
 
       const learnItems = [
         {
@@ -3890,8 +3893,8 @@ const PlateCalculator = ({ targetWeight, barWeight, onClose }) => {
                     icon="Moon"
                     title="Dark Mode"
                     subtitle="Low-glare interface"
-                    enabled={settings.darkMode}
-                    onToggle={(next) => setSettings({ ...settings, darkMode: next })}
+                    enabled={isDarkMode}
+                    onToggle={(next) => setThemeMode(next ? 'dark' : 'light')}
                   />
                   <div>
                     <div className="text-xs font-bold text-gray-500 uppercase mb-2">Dark mode accent</div>
@@ -3899,8 +3902,10 @@ const PlateCalculator = ({ targetWeight, barWeight, onClose }) => {
                       {accentOptions.map(opt => (
                         <button
                           key={opt.id}
-                          onClick={() => setSettings({ ...settings, darkAccent: opt.id })}
-                          className={`flex-1 accent-pill ${settings.darkAccent === opt.id ? 'active' : ''} rounded-xl p-2 flex items-center gap-2`}
+                          onClick={() => isDarkMode && setDarkVariant(opt.id)}
+                          disabled={!isDarkMode}
+                          aria-disabled={!isDarkMode}
+                          className={`flex-1 accent-pill ${isDarkMode && darkVariant === opt.id ? 'active' : ''} rounded-xl p-2 flex items-center gap-2 ${isDarkMode ? '' : 'opacity-50 pointer-events-none'}`}
                         >
                           <span className="w-6 h-6 rounded-lg" style={{ background: opt.color }}></span>
                           <span className="text-sm font-semibold text-gray-800">{opt.label}</span>
@@ -4240,6 +4245,8 @@ const CardioLogger = ({ id, onClose, onUpdateSessionLogs, sessionLogs }) => {
       });
 
       const [settings, setSettings] = useState({ insightsEnabled: true, darkMode: false, darkAccent: 'purple', showAllExercises: false, pinnedExercises: [], workoutViewMode: 'all', suggestedWorkoutCollapsed: true });
+      const [themeMode, setThemeModeState] = useState('light');
+      const [darkVariant, setDarkVariantState] = useState('blue');
       const [history, setHistory] = useState({});
       const [cardioHistory, setCardioHistory] = useState({});
       const [tab, setTab] = useState('home');
@@ -4484,14 +4491,6 @@ const CardioLogger = ({ id, onClose, onUpdateSessionLogs, sessionLogs }) => {
       }, [loaded, pinnedExercises, recentExercises, exerciseUsageCounts, dayEntries, lastExerciseStats]);
 
       useEffect(() => {
-        if (settings.darkMode) {
-          document.body.classList.add('dark-mode');
-        } else {
-          document.body.classList.remove('dark-mode');
-        }
-      }, [settings.darkMode]);
-
-      useEffect(() => {
         return () => {
           if (messageTimerRef.current) clearTimeout(messageTimerRef.current);
         };
@@ -4544,19 +4543,38 @@ const CardioLogger = ({ id, onClose, onUpdateSessionLogs, sessionLogs }) => {
         storage.set(LAST_OPEN_KEY, now.toISOString());
       }, [loaded]);
 
+      const applyTheme = () => {
+        const savedMode = storage.get(THEME_MODE_KEY, 'light');
+        const storedVariant = storage.get(DARK_VARIANT_KEY, 'blue');
+        const nextVariant = storedVariant || 'blue';
+        const themeClasses = ['theme-red', 'theme-yellow', 'theme-blue'];
+        document.body.classList.remove(...themeClasses);
+        if (savedMode === 'dark') {
+          document.body.classList.add('dark-mode');
+          document.body.classList.add(`theme-${nextVariant}`);
+        } else {
+          document.body.classList.remove('dark-mode');
+        }
+        setThemeModeState(savedMode);
+        setDarkVariantState(nextVariant);
+      };
+
+      const setThemeMode = (mode) => {
+        storage.set(THEME_MODE_KEY, mode);
+        if (!storage.get(DARK_VARIANT_KEY, null)) {
+          storage.set(DARK_VARIANT_KEY, 'blue');
+        }
+        applyTheme();
+      };
+
+      const setDarkVariant = (variant) => {
+        storage.set(DARK_VARIANT_KEY, variant);
+        applyTheme();
+      };
+
       useEffect(() => {
-        const accents = {
-          purple: { main: '#8B5CF6', hover: '#7C3AED', soft: 'rgba(139, 92, 246, 0.18)' },
-          red: { main: '#B91C1C', hover: '#991B1B', soft: 'rgba(185, 28, 28, 0.18)' },
-          gold: { main: '#D97706', hover: '#b45309', soft: 'rgba(217, 119, 6, 0.18)' },
-        };
-        const chosen = accents[settings.darkAccent] || accents.purple;
-        const root = document.documentElement;
-        root.style.setProperty('--accent', chosen.main);
-        root.style.setProperty('--accent-soft', chosen.soft);
-        root.style.setProperty('--accent-hover', chosen.hover);
-        root.style.setProperty('--focus-ring', `0 0 0 3px ${chosen.soft}`);
-      }, [settings.darkAccent]);
+        applyTheme();
+      }, []);
 
       const todayWorkoutType = useMemo(() => getTodaysWorkoutType(history, appState), [history, appState]);
 
@@ -5618,6 +5636,10 @@ return (
                     <ProfileView
                       settings={settings}
                       setSettings={setSettings}
+                      themeMode={themeMode}
+                      darkVariant={darkVariant}
+                      setThemeMode={setThemeMode}
+                      setDarkVariant={setDarkVariant}
                       onViewAnalytics={() => setShowAnalytics(true)}
                       onExportData={handleExportData}
                       onImportData={handleImportData}
