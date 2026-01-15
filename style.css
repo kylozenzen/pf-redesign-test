@@ -940,6 +940,38 @@ textarea::placeholder {
   box-shadow: var(--shadow-card), inset 0 1px 0 var(--hairline);
 }
 
+.workout-accent-text {
+  color: var(--accent);
+}
+
+.workout-accent-muted {
+  color: color-mix(in srgb, var(--accent) 70%, var(--muted));
+}
+
+.workout-accent-border {
+  border-color: var(--accent-soft) !important;
+}
+
+.workout-accent-surface {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  border: 1px solid var(--accent-soft);
+}
+
+.workout-accent-solid {
+  background: var(--accent);
+  color: #fff;
+}
+
+.workout-accent-disabled {
+  background: color-mix(in srgb, var(--accent) 30%, var(--surface));
+  color: color-mix(in srgb, var(--text) 75%, var(--muted));
+}
+
+.workout-accent-focus:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
+
 .session-badge {
   font-size: 10px;
   text-transform: uppercase;
