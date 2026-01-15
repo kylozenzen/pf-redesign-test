@@ -2082,7 +2082,7 @@ const Home = ({
   };
 
   const homeStartSubtext = sessionIntent === 'calm'
-    ? 'Draft a calm session in seconds.'
+    ? 'Draft a session in seconds.'
     : sessionIntent === 'recovery'
       ? 'Draft a recovery session in seconds.'
       : 'Draft a session in seconds.';
@@ -2135,7 +2135,7 @@ const Home = ({
               onClick={onStartWorkout}
               className="home-primary-button"
             >
-              Start Today
+              Build Today's Workout
             </button>
           </div>
           <div className="home-section-card">
