@@ -2939,11 +2939,13 @@ const PlateCalculator = ({ targetWeight, barWeight, onClose }) => {
 
       useEffect(() => {
         if (!autoFocusInput) return;
+        const shouldFocusReps = Boolean(setInputs.weight || anchorWeight);
         requestAnimationFrame(() => {
-          (weightInputRef.current || repsInputRef.current)?.focus();
+          const target = shouldFocusReps ? repsInputRef.current : weightInputRef.current;
+          (target || weightInputRef.current || repsInputRef.current)?.focus();
+          onAutoFocusComplete?.();
         });
-        onAutoFocusComplete?.();
-      }, [autoFocusInput, onAutoFocusComplete]);
+      }, [autoFocusInput, anchorWeight, onAutoFocusComplete, setInputs.weight]);
 
       const syncSessionSets = (nextSets) => {
         if (onUpdateSessionLogs) {
@@ -2966,9 +2968,13 @@ const PlateCalculator = ({ targetWeight, barWeight, onClose }) => {
           syncSessionSets(next);
           return next;
         });
-        setSetInputs({ weight: anchorWeight || '', reps: anchorReps || '' });
+        const nextWeight = anchorWeight || '';
+        const nextReps = anchorReps || '';
+        setSetInputs({ weight: nextWeight, reps: nextReps });
+        const shouldFocusReps = Boolean(nextWeight);
         requestAnimationFrame(() => {
-          (weightInputRef.current || repsInputRef.current)?.focus();
+          const target = shouldFocusReps ? repsInputRef.current : weightInputRef.current;
+          (target || weightInputRef.current || repsInputRef.current)?.focus();
         });
         setTimeout(() => setIsAddingSet(false), 300);
         setEditingIndex(null);
@@ -5372,6 +5378,7 @@ const CardioLogger = ({ id, onClose, onUpdateSessionLogs, sessionLogs }) => {
           } else {
             setActiveCardio(null);
             setActiveEquipment(id);
+            setPendingAutoFocusExercise(id);
           }
           return;
         }
