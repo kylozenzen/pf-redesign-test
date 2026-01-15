@@ -2192,6 +2192,7 @@ const Workout = ({ profile, onSelectExercise, settings, setSettings, pinnedExerc
   const [libraryVisible, setLibraryVisible] = useState(settings.showAllExercises);
   const [swapState, setSwapState] = useState(null);
   const [activeFilter, setActiveFilter] = useState('All');
+  const [showCompactSearch, setShowCompactSearch] = useState(false);
   const searchInputRef = useRef(null);
   const searchResultsRef = useRef(null);
   const sessionCardRef = useRef(null);
@@ -2216,19 +2217,19 @@ const Workout = ({ profile, onSelectExercise, settings, setSettings, pinnedExerc
   const filteredRecents = recentExercises.filter(id => availableEquipment.includes(id)).slice(0, 10);
   const filteredFavorites = (favoriteExercises || []).filter(id => availableEquipment.includes(id));
   const todayKey = toDayKey(new Date());
+  const hasSession = !!activeSession;
+  const hasTodayWorkout = hasSession && activeSession?.date === todayKey;
+  const mode = !hasTodayWorkout ? 'idle' : (activeSession?.status === 'active' ? 'active' : 'draft');
+  const isSessionMode = mode === 'active';
+  const isDraft = mode === 'draft';
   const sessionEntries = useMemo(() => {
     if (!activeSession || activeSession.date !== todayKey) return [];
     return activeSession.items || [];
   }, [activeSession, todayKey]);
   const sessionLogsByExercise = activeSession?.date === todayKey ? (activeSession?.logsByExercise || {}) : {};
   const sessionHasLogged = sessionEntries.some(entry => (sessionLogsByExercise[entry.exerciseId || entry.id] || []).length > 0);
-  const hasSession = !!activeSession;
   const sessionExerciseCount = sessionEntries.length;
   const sessionSetCount = sessionEntries.reduce((sum, entry) => sum + ((sessionLogsByExercise[entry.exerciseId || entry.id] || []).length), 0);
-  const hasTodayWorkout = hasSession && activeSession?.date === todayKey;
-  const mode = !hasTodayWorkout ? 'idle' : (activeSession?.status === 'active' ? 'active' : 'draft');
-  const isSessionMode = mode === 'active';
-  const isDraft = mode === 'draft';
   const finishSummaryBase = `${sessionExerciseCount} exercises • ${sessionSetCount} sets`;
   const finishSummaryIntent = sessionIntent === 'calm'
     ? 'Calm pace'
@@ -2286,6 +2287,12 @@ const Workout = ({ profile, onSelectExercise, settings, setSettings, pinnedExerc
   useEffect(() => {
     setLibraryVisible(settings.showAllExercises);
   }, [settings.showAllExercises]);
+
+  useEffect(() => {
+    if (mode === 'idle') {
+      setShowCompactSearch(false);
+    }
+  }, [mode]);
 
 
   useEffect(() => {
@@ -2443,6 +2450,23 @@ const Workout = ({ profile, onSelectExercise, settings, setSettings, pinnedExerc
     });
   };
 
+  const handleBrowseAll = () => {
+    setLibraryVisible(prev => !prev);
+    setActiveFilter('All');
+  };
+
+  const handleSearchFocus = () => {
+    setShowCompactSearch(true);
+    requestAnimationFrame(() => {
+      searchInputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      searchInputRef.current?.focus();
+    });
+  };
+
+  const showIdleControls = mode === 'idle';
+  const showCompactControls = mode !== 'idle';
+  const showCompactSearchInput = showCompactControls && (showCompactSearch || !!searchQuery);
+
   return (
     <div className="flex flex-col h-full bg-gray-50 workout-shell relative">
       <div className="bg-white border-b border-gray-100 sticky top-0 z-20" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
@@ -2455,49 +2479,94 @@ const Workout = ({ profile, onSelectExercise, settings, setSettings, pinnedExerc
       </div>
 
       <div className={`flex-1 overflow-y-auto pb-28 px-4 space-y-4 workout-scroll ${isSessionMode ? 'workout-scroll--with-footer' : ''}`}>
-        <Card className="space-y-3 workout-card mt-5 start-today-card">
-          <div>
-            <div className="text-xs font-bold workout-muted uppercase">Start Today</div>
-            <div className="text-base font-black workout-heading">Build today’s session</div>
-          </div>
-          <div className="space-y-2">
-            <button
-              onClick={() => onStartEmptySession?.()}
-              disabled={isRestDay || hasTodayWorkout}
-              className={`w-full py-3 rounded-xl font-bold active:scale-[0.98] ${
-                (isRestDay || hasTodayWorkout) ? 'bg-gray-300 text-gray-600 cursor-not-allowed' : 'accent-button'
-              }`}
-            >
-              {hasTodayWorkout ? 'Drafted for today' : 'Start Today'}
-            </button>
-            <button
-              onClick={() => {
-                setLibraryVisible(prev => !prev);
-                setActiveFilter('All');
-              }}
-              disabled={isRestDay}
-              className={`w-full py-3 rounded-xl border font-bold active:scale-[0.98] ${
-                isRestDay ? 'border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed' : 'border-gray-200 bg-white text-gray-900'
-              }`}
-            >
-              {libraryVisible ? 'Close' : 'Browse full library'}
-            </button>
-          </div>
-          <div className="relative">
-            <Icon name="Search" className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <input
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search exercises..."
-              ref={searchInputRef}
-              disabled={isRestDay}
-              className="w-full pl-10 pr-4 py-3 bg-gray-100 rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-[var(--accent-soft)] disabled:text-gray-400"
-            />
-          </div>
-          {!hasTodayWorkout && !isRestDay && (
-            <div className="text-[11px] workout-muted">Create a draft to add exercises and start logging.</div>
-          )}
-        </Card>
+        {showIdleControls && (
+          <Card className="space-y-3 workout-card mt-5 start-today-card">
+            <div>
+              <div className="text-xs font-bold workout-muted uppercase">Start Today</div>
+              <div className="text-base font-black workout-heading">Build today’s session</div>
+            </div>
+            <div className="space-y-2">
+              <button
+                onClick={() => onStartEmptySession?.()}
+                disabled={isRestDay || hasTodayWorkout}
+                className={`w-full py-3 rounded-xl font-bold active:scale-[0.98] ${
+                  (isRestDay || hasTodayWorkout) ? 'bg-gray-300 text-gray-600 cursor-not-allowed' : 'accent-button'
+                }`}
+              >
+                {hasTodayWorkout ? 'Drafted for today' : 'Start Today'}
+              </button>
+              <button
+                onClick={handleBrowseAll}
+                disabled={isRestDay}
+                className={`w-full py-3 rounded-xl border font-bold active:scale-[0.98] ${
+                  isRestDay ? 'border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed' : 'border-gray-200 bg-white text-gray-900'
+                }`}
+              >
+                {libraryVisible ? 'Close library' : 'Browse library'}
+              </button>
+            </div>
+            <div className="relative">
+              <Icon name="Search" className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <input
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search exercises..."
+                ref={searchInputRef}
+                disabled={isRestDay}
+                className="w-full pl-10 pr-4 py-3 bg-gray-100 rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-[var(--accent-soft)] disabled:text-gray-400"
+              />
+            </div>
+            {!hasTodayWorkout && !isRestDay && (
+              <div className="text-[11px] workout-muted">Create a draft to add exercises and start logging.</div>
+            )}
+          </Card>
+        )}
+
+        {showCompactControls && (
+          <Card className="workout-card mt-5">
+            <div className="flex items-center justify-between gap-3">
+              <div className="text-xs font-bold workout-muted uppercase">
+                {mode === 'draft' ? 'Draft mode' : 'Workout active'}
+              </div>
+              <div className="flex items-center gap-3 text-xs font-semibold">
+                <button
+                  onClick={handleBrowseAll}
+                  disabled={isRestDay}
+                  className={`px-2 py-1 rounded-full border ${
+                    isRestDay ? 'border-gray-200 text-gray-400 cursor-not-allowed' : 'border-gray-200 text-gray-700'
+                  }`}
+                >
+                  {libraryVisible ? 'Close' : 'Browse all'}
+                </button>
+                <button
+                  onClick={handleSearchFocus}
+                  disabled={isRestDay}
+                  className={`px-2 py-1 rounded-full border ${
+                    isRestDay ? 'border-gray-200 text-gray-400 cursor-not-allowed' : 'border-gray-200 text-gray-700'
+                  }`}
+                >
+                  Search
+                </button>
+              </div>
+            </div>
+          </Card>
+        )}
+
+        {showCompactSearchInput && (
+          <Card className="workout-card">
+            <div className="relative">
+              <Icon name="Search" className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <input
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search exercises..."
+                ref={searchInputRef}
+                disabled={isRestDay}
+                className="w-full pl-10 pr-4 py-3 bg-gray-100 rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-[var(--accent-soft)] disabled:text-gray-400"
+              />
+            </div>
+          </Card>
+        )}
 
         {searchQuery && (
           <div ref={searchResultsRef}>
