@@ -2222,12 +2222,13 @@ const Workout = ({ profile, onSelectExercise, settings, setSettings, pinnedExerc
   }, [activeSession, todayKey]);
   const sessionLogsByExercise = activeSession?.date === todayKey ? (activeSession?.logsByExercise || {}) : {};
   const sessionHasLogged = sessionEntries.some(entry => (sessionLogsByExercise[entry.exerciseId || entry.id] || []).length > 0);
-  const isSessionMode = activeSession?.status === 'active';
   const hasSession = !!activeSession;
   const sessionExerciseCount = sessionEntries.length;
   const sessionSetCount = sessionEntries.reduce((sum, entry) => sum + ((sessionLogsByExercise[entry.exerciseId || entry.id] || []).length), 0);
   const hasTodayWorkout = hasSession && activeSession?.date === todayKey;
-  const isDraft = hasTodayWorkout && !isSessionMode;
+  const mode = !hasTodayWorkout ? 'idle' : (activeSession?.status === 'active' ? 'active' : 'draft');
+  const isSessionMode = mode === 'active';
+  const isDraft = mode === 'draft';
   const finishSummaryBase = `${sessionExerciseCount} exercises • ${sessionSetCount} sets`;
   const finishSummaryIntent = sessionIntent === 'calm'
     ? 'Calm pace'
@@ -2549,24 +2550,31 @@ const Workout = ({ profile, onSelectExercise, settings, setSettings, pinnedExerc
                   return (
                   <div
                     key={entryId}
-                    onClick={() => onSelectExercise(entryId, 'session')}
+                    onClick={mode === 'active' ? () => onSelectExercise(entryId, 'session') : undefined}
                     className="session-entry-row"
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(e) => { if (e.key === 'Enter') onSelectExercise(entryId, 'session'); }}
+                    role={mode === 'active' ? 'button' : undefined}
+                    tabIndex={mode === 'active' ? 0 : undefined}
+                    onKeyDown={mode === 'active' ? (e) => { if (e.key === 'Enter') onSelectExercise(entryId, 'session'); } : undefined}
+                    style={{ cursor: mode === 'active' ? 'pointer' : 'default' }}
                   >
                     <div>
                       <div className="text-sm font-bold workout-heading">{entry.name || entry.label}</div>
                       <div className="text-[11px] workout-muted">{entry.kind === 'cardio' ? 'Cardio' : (entry.muscleGroup || 'Strength')}</div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <div className="text-xs font-bold text-purple-600">{entrySetCount} {entry.kind === 'cardio' ? 'entries' : 'sets'}</div>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); onSelectExercise(entryId, 'session'); }}
-                        className="session-action-button"
-                      >
-                        + Set
-                      </button>
+                      {(mode === 'active' || entrySetCount > 0) && (
+                        <div className={`text-xs font-bold ${mode === 'draft' ? 'workout-muted' : 'cues-accent'}`}>
+                          {entrySetCount} {entry.kind === 'cardio' ? 'entries' : 'sets'}
+                        </div>
+                      )}
+                      {mode === 'active' && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); onSelectExercise(entryId, 'session'); }}
+                          className="session-action-button"
+                        >
+                          + Set
+                        </button>
+                      )}
                       {entry.kind !== 'cardio' && (
                         <button
                           onClick={(e) => { e.stopPropagation(); setSwapState({ mode: 'session', index: idx }); }}
@@ -5354,8 +5362,10 @@ const CardioLogger = ({ id, onClose, onUpdateSessionLogs, sessionLogs }) => {
           if (!activeSessionToday?.items?.some(item => (item.exerciseId || item.id) === id)) return;
           const entry = activeSessionToday?.items?.find(item => (item.exerciseId || item.id) === id);
           if (entry?.kind === 'cardio') {
+            setActiveEquipment(null);
             setActiveCardio(id);
           } else {
+            setActiveCardio(null);
             setActiveEquipment(id);
           }
           return;
