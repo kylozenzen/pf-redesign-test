@@ -2773,17 +2773,17 @@ const PlateCalculator = ({ targetWeight, barWeight, onClose }) => {
                 value={displayWeight}
                 onChange={(e) => setDisplayWeight(e.target.value)}
                 placeholder="Enter weight"
-                className="w-full text-2xl font-bold text-center p-4 border-2 border-purple-200 rounded-xl focus:border-purple-600 outline-none bg-white text-gray-900 dark-mode-input"
+                className="w-full text-2xl font-bold text-center p-4 border-2 workout-accent-border rounded-xl workout-accent-focus outline-none bg-white text-gray-900 dark-mode-input"
               />
               <div className="text-center text-xs text-gray-500 mt-2">Bar weight: {barWeight} lbs</div>
             </div>
             
             {platesToLoad.length > 0 ? (
               <>
-                <div className="bg-purple-50 rounded-xl p-4 mb-4">
+                <div className="workout-accent-surface rounded-xl p-4 mb-4">
                   <div className="text-center mb-3">
-                    <div className="text-sm font-semibold text-purple-700">Actual Weight</div>
-                    <div className="text-3xl font-black text-purple-600">{actualWeight} lbs</div>
+                    <div className="text-sm font-semibold workout-accent-text">Actual Weight</div>
+                    <div className="text-3xl font-black workout-accent-text">{actualWeight} lbs</div>
                   </div>
                   
                   <div className="flex justify-center items-center gap-2 my-6">
@@ -2792,7 +2792,7 @@ const PlateCalculator = ({ targetWeight, barWeight, onClose }) => {
                       {platesToLoad.map((plate, i) => (
                         <div
                           key={i}
-                          className="bg-purple-600 text-white rounded px-3 py-2 text-center font-bold text-sm"
+                          className="workout-accent-solid rounded px-3 py-2 text-center font-bold text-sm"
                           style={{ width: `${60 + plate}px` }}
                         >
                           {plate}
@@ -2811,11 +2811,11 @@ const PlateCalculator = ({ targetWeight, barWeight, onClose }) => {
                   {plates.map(p => {
                     const count = platesToLoad.filter(plate => plate === p).length;
                     return (
-                      <div key={p} className={`text-center p-2 rounded-lg border-2 ${
-                        count > 0 ? 'border-purple-600 bg-purple-50' : 'border-gray-200 bg-gray-50'
+                      <div key={p} className={`text-center p-2 rounded-lg border ${
+                        count > 0 ? 'workout-accent-surface' : 'border-gray-200 bg-gray-50'
                       }`}>
                         <div className="text-xs font-bold text-gray-900">{p}</div>
-                        {count > 0 && <div className="text-xs text-purple-600">×{count}</div>}
+                        {count > 0 && <div className="text-xs workout-accent-text">×{count}</div>}
                       </div>
                     );
                   })}
@@ -2968,7 +2968,7 @@ const PlateCalculator = ({ targetWeight, barWeight, onClose }) => {
           syncSessionSets(next);
           return next;
         });
-        const nextWeight = anchorWeight || '';
+        const nextWeight = anchorWeight || String(w);
         const nextReps = anchorReps || '';
         setSetInputs({ weight: nextWeight, reps: nextReps });
         const shouldFocusReps = Boolean(nextWeight);
@@ -3147,7 +3147,7 @@ const PlateCalculator = ({ targetWeight, barWeight, onClose }) => {
               <button
                 onClick={() => setActiveTab('workout')}
                 className={`flex-1 py-3 text-sm font-bold transition-colors ${
-                  activeTab === 'workout' ? 'text-purple-600 border-b-2 border-purple-600' : 'text-gray-400'
+                  activeTab === 'workout' ? 'workout-accent-text border-b-2 workout-accent-border' : 'text-gray-400'
                 }`}
               >
                 Log
@@ -3155,7 +3155,7 @@ const PlateCalculator = ({ targetWeight, barWeight, onClose }) => {
               {insightsEnabled && (<button
                 onClick={() => setActiveTab('cues')}
                 className={`flex-1 py-3 text-sm font-bold transition-colors ${
-                  activeTab === 'cues' ? 'text-purple-600 border-b-2 border-purple-600' : 'text-gray-400'
+                  activeTab === 'cues' ? 'workout-accent-text border-b-2 workout-accent-border' : 'text-gray-400'
                 }`}
               >
                 Cues & Info
@@ -3172,7 +3172,7 @@ const PlateCalculator = ({ targetWeight, barWeight, onClose }) => {
                         className="w-full p-4 flex items-center justify-between"
                       >
                         <div className="flex items-center gap-2">
-                          <Icon name="Trophy" className="w-5 h-5 text-purple-600"/>
+                          <Icon name="Trophy" className="w-5 h-5 workout-accent-text"/>
                           <h3 className="text-xs font-black uppercase text-gray-900">Log Today</h3>
                         </div>
                         <Icon name="ChevronDown" className={`w-5 h-5 text-gray-600 transition-transform ${showLogger ? 'rotate-180' : ''}`}/>
@@ -3198,7 +3198,7 @@ const PlateCalculator = ({ targetWeight, barWeight, onClose }) => {
                                   value={baselineInputs.weight}
                                   onChange={(e) => setBaselineInputs(prev => ({ ...prev, weight: e.target.value }))}
                                   placeholder="lbs"
-                                  className="w-full p-3 rounded-xl baseline-input font-black text-center focus:border-purple-500 outline-none"
+                                  className="w-full p-3 rounded-xl baseline-input font-black text-center workout-accent-focus outline-none"
                                 />
                                 <input
                                   type="number"
@@ -3206,7 +3206,7 @@ const PlateCalculator = ({ targetWeight, barWeight, onClose }) => {
                                   value={baselineInputs.reps}
                                   onChange={(e) => setBaselineInputs(prev => ({ ...prev, reps: e.target.value }))}
                                   placeholder="reps"
-                                  className="w-full p-3 rounded-xl baseline-input font-black text-center focus:border-purple-500 outline-none"
+                                  className="w-full p-3 rounded-xl baseline-input font-black text-center workout-accent-focus outline-none"
                                 />
                               </div>
                               <button
@@ -3223,18 +3223,18 @@ const PlateCalculator = ({ targetWeight, barWeight, onClose }) => {
 
                           {!isBaselineMode && (
                             <>
-                              <div className="p-3 rounded-2xl bg-purple-50 border border-purple-200 space-y-3">
+                              <div className="p-3 rounded-2xl workout-accent-surface space-y-3">
                                 <div className="flex items-center justify-between">
                                   <div>
-                                    <div className="text-[10px] font-black uppercase text-purple-700">Anchored weight</div>
-                                    <div className="text-base font-black text-purple-900">
+                                    <div className="text-[10px] font-black uppercase workout-accent-text">Anchored weight</div>
+                                    <div className="text-base font-black text-gray-900">
                                       {anchorWeight && anchorReps ? `${anchorWeight} lb × ${anchorReps} reps` : 'Set your anchor'}
                                     </div>
-                                    {anchorAdjusted && <div className="text-[11px] text-purple-700 font-semibold">Adjusted today</div>}
+                                    {anchorAdjusted && <div className="text-[11px] workout-accent-text font-semibold">Adjusted today</div>}
                                   </div>
                                   <button
                                     onClick={() => setShowAdjust(v => !v)}
-                                    className="px-3 py-2 rounded-lg bg-white border border-purple-200 text-purple-700 font-bold active:scale-95 text-xs"
+                                    className="px-3 py-2 rounded-lg bg-white border workout-accent-border workout-accent-text font-bold active:scale-95 text-xs"
                                   >
                                     {showAdjust ? 'Done' : 'Adjust'}
                                   </button>
@@ -3248,7 +3248,7 @@ const PlateCalculator = ({ targetWeight, barWeight, onClose }) => {
                                       value={anchorWeight}
                                       onChange={(e) => { setAnchorWeight(e.target.value); setAnchorAdjusted(true); }}
                                       placeholder="lbs"
-                                      className="w-full p-3 rounded-xl border-2 border-purple-200 bg-white font-black text-center text-gray-900 focus:border-purple-500 outline-none"
+                                      className="w-full p-3 rounded-xl border-2 workout-accent-border bg-white font-black text-center text-gray-900 workout-accent-focus outline-none"
                                     />
                                     <input
                                       type="number"
@@ -3256,15 +3256,15 @@ const PlateCalculator = ({ targetWeight, barWeight, onClose }) => {
                                       value={anchorReps}
                                       onChange={(e) => { setAnchorReps(e.target.value); setAnchorAdjusted(true); }}
                                       placeholder="reps"
-                                      className="w-full p-3 rounded-xl border-2 border-purple-200 bg-white font-black text-center text-gray-900 focus:border-purple-500 outline-none"
+                                      className="w-full p-3 rounded-xl border-2 workout-accent-border bg-white font-black text-center text-gray-900 workout-accent-focus outline-none"
                                     />
                                   </div>
                                 )}
 
-                                <div className="flex items-center justify-between text-sm font-semibold text-purple-900">
+                                <div className="flex items-center justify-between text-sm font-semibold text-gray-900">
                                   <span>Sets completed: {loggedSets.length}</span>
                                   {anchorWeight && anchorReps && (
-                                    <span className="text-[11px] text-purple-700 font-bold">Using: {anchorWeight} lb × {anchorReps} reps</span>
+                                    <span className="text-[11px] workout-accent-text font-bold">Using: {anchorWeight} lb × {anchorReps} reps</span>
                                   )}
                                 </div>
 
@@ -3282,7 +3282,7 @@ const PlateCalculator = ({ targetWeight, barWeight, onClose }) => {
                                     }}
                                     placeholder="Weight"
                                     ref={weightInputRef}
-                                    className="w-full p-3 rounded-xl border-2 border-purple-200 bg-white font-black text-center text-gray-900 focus:border-purple-500 outline-none"
+                                    className="w-full p-3 rounded-xl border-2 workout-accent-border bg-white font-black text-center text-gray-900 workout-accent-focus outline-none"
                                   />
                                   <input
                                     type="number"
@@ -3297,7 +3297,7 @@ const PlateCalculator = ({ targetWeight, barWeight, onClose }) => {
                                     }}
                                     placeholder="Reps"
                                     ref={repsInputRef}
-                                    className="w-full p-3 rounded-xl border-2 border-purple-200 bg-white font-black text-center text-gray-900 focus:border-purple-500 outline-none"
+                                    className="w-full p-3 rounded-xl border-2 workout-accent-border bg-white font-black text-center text-gray-900 workout-accent-focus outline-none"
                                   />
                                 </div>
 
@@ -3309,15 +3309,15 @@ const PlateCalculator = ({ targetWeight, barWeight, onClose }) => {
                                     handleQuickAddSet();
                                   }}
                                   disabled={!setInputs.weight || !setInputs.reps || isBaselineMode || isAddingSet}
-                                  className={`w-full py-3 rounded-xl font-black text-white transition-all active:scale-95 flex items-center justify-center gap-2 ${
-                                    (!setInputs.weight || !setInputs.reps || isBaselineMode || isAddingSet) ? 'bg-purple-200 cursor-not-allowed' : 'bg-purple-600 shadow-lg'
+                                  className={`w-full py-3 rounded-xl font-black transition-all active:scale-95 flex items-center justify-center gap-2 ${
+                                    (!setInputs.weight || !setInputs.reps || isBaselineMode || isAddingSet) ? 'workout-accent-disabled cursor-not-allowed' : 'workout-accent-solid shadow-lg'
                                   }`}
                                 >
                                   <span className="text-lg">＋</span>
                                   {isAddingSet ? 'Adding...' : 'Add Set'}
                                 </button>
 
-                                <div className="text-[10px] text-purple-700/80 font-semibold">
+                                <div className="text-[10px] workout-accent-muted font-semibold">
                                   Add sets fast. You can edit or delete any set below.
                                 </div>
                               </div>
@@ -3327,7 +3327,7 @@ const PlateCalculator = ({ targetWeight, barWeight, onClose }) => {
                                     e.stopPropagation();
                                     setShowPlateCalc(true);
                                   }}
-                                  className="w-full py-2 px-3 rounded-lg text-xs font-bold bg-white text-purple-700 border border-purple-200 active:scale-95 transition-all flex items-center justify-center gap-2"
+                                  className="w-full py-2 px-3 rounded-lg text-xs font-bold bg-white workout-accent-text border workout-accent-border active:scale-95 transition-all flex items-center justify-center gap-2"
                                 >
                                   🏋️ Plate Calculator
                                 </button>
@@ -3337,7 +3337,7 @@ const PlateCalculator = ({ targetWeight, barWeight, onClose }) => {
                                 <div className="flex items-center justify-between">
                                   <div className="text-[10px] font-black uppercase text-gray-500">Logged sets</div>
                                   {loggedSets.length > 0 && (
-                                    <div className="text-[11px] text-purple-700 font-semibold">{loggedSets.length} sets</div>
+                                    <div className="text-[11px] workout-accent-text font-semibold">{loggedSets.length} sets</div>
                                   )}
                                 </div>
                                 {loggedSets.length === 0 ? (
@@ -3347,7 +3347,7 @@ const PlateCalculator = ({ targetWeight, barWeight, onClose }) => {
                                     {loggedSets.map((s, idx) => (
                                       <div
                                         key={idx}
-                                        className={`p-3 rounded-xl border ${editingIndex === idx ? 'border-purple-300 bg-purple-50' : 'border-gray-100 bg-gray-50'} flex items-center justify-between gap-3`}
+                                        className={`p-3 rounded-xl border ${editingIndex === idx ? 'workout-accent-border workout-accent-surface' : 'border-gray-100 bg-gray-50'} flex items-center justify-between gap-3`}
                                       >
                                         {editingIndex === idx ? (
                                           <div className="flex-1 grid grid-cols-2 gap-2">
@@ -3362,7 +3362,7 @@ const PlateCalculator = ({ targetWeight, barWeight, onClose }) => {
                                                   saveEditedSet();
                                                 }
                                               }}
-                                              className="w-full p-2 rounded-lg border-2 border-purple-200 bg-white font-bold text-center text-gray-900 focus:border-purple-500 outline-none"
+                                              className="w-full p-2 rounded-lg border-2 workout-accent-border bg-white font-bold text-center text-gray-900 workout-accent-focus outline-none"
                                             />
                                             <input
                                               type="number"
@@ -3375,11 +3375,11 @@ const PlateCalculator = ({ targetWeight, barWeight, onClose }) => {
                                                   saveEditedSet();
                                                 }
                                               }}
-                                              className="w-full p-2 rounded-lg border-2 border-purple-200 bg-white font-bold text-center text-gray-900 focus:border-purple-500 outline-none"
+                                              className="w-full p-2 rounded-lg border-2 workout-accent-border bg-white font-bold text-center text-gray-900 workout-accent-focus outline-none"
                                             />
                                             <button
                                               onClick={saveEditedSet}
-                                              className="col-span-2 py-2 rounded-lg bg-purple-600 text-white font-bold active:scale-95"
+                                              className="col-span-2 py-2 rounded-lg workout-accent-solid font-bold active:scale-95"
                                             >
                                               Save
                                             </button>
@@ -3427,7 +3427,7 @@ const PlateCalculator = ({ targetWeight, barWeight, onClose }) => {
                                   </div>
                                   <button
                                     onClick={handleClose}
-                                    className="px-4 py-2 rounded-lg bg-purple-600 text-white font-bold active:scale-95"
+                                    className="px-4 py-2 rounded-lg workout-accent-solid font-bold active:scale-95"
                                   >
                                     Workout logged
                                   </button>
@@ -3437,7 +3437,7 @@ const PlateCalculator = ({ targetWeight, barWeight, onClose }) => {
                                   value={note}
                                   onChange={(e) => setNote(e.target.value)}
                                   placeholder="How did this feel?"
-                                  className="w-full p-3 rounded-xl border border-gray-200 bg-gray-50 text-sm text-gray-800 focus:border-purple-400 outline-none"
+                                  className="w-full p-3 rounded-xl border border-gray-200 bg-gray-50 text-sm text-gray-800 workout-accent-focus outline-none"
                                   rows={2}
                                 />
                               </div>
@@ -4186,6 +4186,10 @@ const CardioLogger = ({ id, onClose, onUpdateSessionLogs, sessionLogs }) => {
     setEntries(sessionLogs || []);
   }, [sessionLogs, id]);
 
+  useEffect(() => {
+    requestAnimationFrame(() => minutesRef.current?.focus());
+  }, [id]);
+
   const handleAddEntry = () => {
     const mins = Number(minutes);
     if (!mins || mins <= 0) return;
@@ -4243,7 +4247,7 @@ const CardioLogger = ({ id, onClose, onUpdateSessionLogs, sessionLogs }) => {
               value={minutes}
               onChange={(e) => setMinutes(e.target.value)}
               placeholder="20"
-              className="w-full text-lg font-bold text-center p-3 border-2 border-gray-200 rounded-xl focus:border-purple-600 outline-none bg-white text-gray-900"
+              className="w-full text-lg font-bold text-center p-3 border-2 border-gray-200 rounded-xl workout-accent-focus outline-none bg-white text-gray-900"
             />
           </div>
           <div className="grid grid-cols-[1fr_auto] gap-2">
@@ -4254,7 +4258,7 @@ const CardioLogger = ({ id, onClose, onUpdateSessionLogs, sessionLogs }) => {
                 value={distance}
                 onChange={(e) => setDistance(e.target.value)}
                 placeholder="3.2"
-                className="w-full text-base font-semibold text-center p-3 border-2 border-gray-200 rounded-xl focus:border-purple-600 outline-none bg-white text-gray-900"
+                className="w-full text-base font-semibold text-center p-3 border-2 border-gray-200 rounded-xl workout-accent-focus outline-none bg-white text-gray-900"
               />
             </div>
             <div>
@@ -4276,7 +4280,7 @@ const CardioLogger = ({ id, onClose, onUpdateSessionLogs, sessionLogs }) => {
               value={incline}
               onChange={(e) => setIncline(e.target.value)}
               placeholder="2.0"
-              className="w-full text-base font-semibold text-center p-3 border-2 border-gray-200 rounded-xl focus:border-purple-600 outline-none bg-white text-gray-900"
+              className="w-full text-base font-semibold text-center p-3 border-2 border-gray-200 rounded-xl workout-accent-focus outline-none bg-white text-gray-900"
             />
           </div>
           <div>
@@ -4285,14 +4289,14 @@ const CardioLogger = ({ id, onClose, onUpdateSessionLogs, sessionLogs }) => {
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="How did it feel?"
-              className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-purple-600 outline-none bg-white text-gray-900 min-h-[80px]"
+              className="w-full p-3 border-2 border-gray-200 rounded-xl workout-accent-focus outline-none bg-white text-gray-900 min-h-[80px]"
             />
           </div>
           <button
             onClick={handleAddEntry}
             disabled={!minutes}
-            className={`w-full py-3 rounded-xl font-bold text-white transition-all active:scale-[0.98] ${
-              minutes ? 'bg-purple-600 shadow-lg' : 'bg-gray-300 cursor-not-allowed'
+            className={`w-full py-3 rounded-xl font-bold transition-all active:scale-[0.98] ${
+              minutes ? 'workout-accent-solid shadow-lg' : 'bg-gray-300 cursor-not-allowed'
             }`}
           >
             Add Entry
@@ -4302,7 +4306,7 @@ const CardioLogger = ({ id, onClose, onUpdateSessionLogs, sessionLogs }) => {
         <div className="bg-white border border-gray-200 rounded-2xl p-4 space-y-2">
           <div className="flex items-center justify-between">
             <div className="text-[10px] font-black uppercase text-gray-500">Logged entries</div>
-            <div className="text-[11px] text-purple-700 font-semibold">{entries.length} entries</div>
+            <div className="text-[11px] workout-accent-text font-semibold">{entries.length} entries</div>
           </div>
           {entries.length === 0 ? (
             <div className="text-sm text-gray-500">No cardio entries yet.</div>
