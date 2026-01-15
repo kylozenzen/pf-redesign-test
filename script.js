@@ -2456,11 +2456,15 @@ const Workout = ({ profile, onSelectExercise, settings, setSettings, pinnedExerc
   };
 
   const handleSearchFocus = () => {
-    setShowCompactSearch(true);
-    requestAnimationFrame(() => {
-      searchInputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      searchInputRef.current?.focus();
-    });
+    if (!showCompactSearch) {
+      setShowCompactSearch(true);
+      requestAnimationFrame(() => {
+        searchInputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        searchInputRef.current?.focus();
+      });
+      return;
+    }
+    setShowCompactSearch(false);
   };
 
   const showIdleControls = mode === 'idle';
@@ -2673,7 +2677,13 @@ const Workout = ({ profile, onSelectExercise, settings, setSettings, pinnedExerc
               </button>
               {isDraft && (
                 <button
-                  onClick={() => onStartWorkoutFromBuilder?.()}
+                  onClick={() => {
+                    if (libraryVisible) setLibraryVisible(false);
+                    if (showCompactSearch) setShowCompactSearch(false);
+                    if (searchQuery) setSearchQuery('');
+                    setActiveFilter('All');
+                    onStartWorkoutFromBuilder?.();
+                  }}
                   className="w-full py-3 rounded-xl font-bold active:scale-[0.98] accent-button"
                 >
                   Start Workout
