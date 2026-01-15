@@ -2326,7 +2326,7 @@ const Workout = ({ profile, onSelectExercise, settings, setSettings, pinnedExerc
         className="w-full p-3 rounded-xl border border-gray-200 bg-white flex items-center justify-between"
       >
         <div className="flex items-center gap-3 text-left">
-          <div className="w-10 h-10 rounded-lg bg-purple-50 text-purple-700 flex items-center justify-center text-lg">
+          <div className="w-10 h-10 rounded-lg workout-chip flex items-center justify-center text-lg">
             {getExerciseIcon(eq)}
           </div>
           <div>
@@ -2358,7 +2358,7 @@ const Workout = ({ profile, onSelectExercise, settings, setSettings, pinnedExerc
           {allowAdd && (
             <button
               onClick={(e) => { e.preventDefault(); e.stopPropagation(); (onAction ? onAction(id) : onAddExerciseFromSearch?.(id)); }}
-              className="text-purple-600 font-semibold text-sm"
+              className="cues-accent font-semibold text-sm"
             >
               {actionLabel}
             </button>
@@ -2465,7 +2465,7 @@ const Workout = ({ profile, onSelectExercise, settings, setSettings, pinnedExerc
               onClick={() => onStartEmptySession?.()}
               disabled={isRestDay || hasTodayWorkout}
               className={`w-full py-3 rounded-xl font-bold active:scale-[0.98] ${
-                (isRestDay || hasTodayWorkout) ? 'bg-gray-300 text-gray-600 cursor-not-allowed' : 'bg-purple-600 text-white'
+                (isRestDay || hasTodayWorkout) ? 'bg-gray-300 text-gray-600 cursor-not-allowed' : 'accent-button'
               }`}
             >
               {hasTodayWorkout ? 'Drafted for today' : 'Start Today'}
@@ -2491,7 +2491,7 @@ const Workout = ({ profile, onSelectExercise, settings, setSettings, pinnedExerc
               placeholder="Search exercises..."
               ref={searchInputRef}
               disabled={isRestDay}
-              className="w-full pl-10 pr-4 py-3 bg-gray-100 rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-purple-300 disabled:text-gray-400"
+              className="w-full pl-10 pr-4 py-3 bg-gray-100 rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-[var(--accent-soft)] disabled:text-gray-400"
             />
           </div>
           {!hasTodayWorkout && !isRestDay && (
@@ -2563,7 +2563,7 @@ const Workout = ({ profile, onSelectExercise, settings, setSettings, pinnedExerc
                     </div>
                     <div className="flex items-center gap-2">
                       {(mode === 'active' || entrySetCount > 0) && (
-                        <div className={`text-xs font-bold ${mode === 'draft' ? 'workout-muted' : 'cues-accent'}`}>
+                        <div className={mode === 'draft' ? 'text-[11px] font-semibold workout-muted' : 'text-xs font-bold cues-accent'}>
                           {entrySetCount} {entry.kind === 'cardio' ? 'entries' : 'sets'}
                         </div>
                       )}
@@ -2605,7 +2605,7 @@ const Workout = ({ profile, onSelectExercise, settings, setSettings, pinnedExerc
               {isDraft && (
                 <button
                   onClick={() => onStartWorkoutFromBuilder?.()}
-                  className="w-full py-3 rounded-xl bg-purple-600 text-white font-bold active:scale-[0.98]"
+                  className="w-full py-3 rounded-xl font-bold active:scale-[0.98] accent-button"
                 >
                   Start Workout
                 </button>
@@ -2658,7 +2658,7 @@ const Workout = ({ profile, onSelectExercise, settings, setSettings, pinnedExerc
           <Card className="space-y-2 workout-card">
             <div className="flex items-center justify-between">
               <div className="text-xs font-bold workout-muted uppercase">Full Library</div>
-              <button onClick={() => setLibraryVisible(false)} className="text-xs text-purple-700 font-bold">Close</button>
+              <button onClick={() => setLibraryVisible(false)} className="text-xs cues-accent font-bold">Close</button>
             </div>
             <div className="filter-chip-row no-scrollbar">
               {filterOptions.map(option => (
@@ -2687,7 +2687,7 @@ const Workout = ({ profile, onSelectExercise, settings, setSettings, pinnedExerc
             </div>
             <button
               onClick={onFinishSession}
-              className="finish-button py-3 px-5 rounded-2xl bg-purple-600 text-white font-bold shadow-lg active:scale-[0.98]"
+              className="finish-button accent-button w-auto py-3 px-5 rounded-2xl font-bold shadow-lg active:scale-[0.98]"
             >
               Finish Workout
             </button>
@@ -5361,6 +5361,11 @@ const CardioLogger = ({ id, onClose, onUpdateSessionLogs, sessionLogs }) => {
         if (mode === 'session') {
           if (!activeSessionToday?.items?.some(item => (item.exerciseId || item.id) === id)) return;
           const entry = activeSessionToday?.items?.find(item => (item.exerciseId || item.id) === id);
+          if (activeEquipment === id || activeCardio === id) {
+            setActiveEquipment(null);
+            setActiveCardio(null);
+            return;
+          }
           if (entry?.kind === 'cardio') {
             setActiveEquipment(null);
             setActiveCardio(id);
