@@ -4128,6 +4128,13 @@ const PlateCalculator = ({ targetWeight, barWeight, onClose }) => {
                     onToggle={(next) => setSettings({ ...settings, insightsEnabled: next })}
                   />
                   <ToggleRow
+                    icon="Sparkles"
+                    title="Smart Suggestions"
+                    subtitle="Offer a quick nudge for running logs"
+                    enabled={settings.smartSuggestionsEnabled !== false}
+                    onToggle={(next) => setSettings({ ...settings, smartSuggestionsEnabled: next })}
+                  />
+                  <ToggleRow
                     icon="List"
                     title="Show All Exercises"
                     subtitle="Start with the full library open"
@@ -4255,26 +4262,24 @@ const PlateCalculator = ({ targetWeight, barWeight, onClose }) => {
     };
 
 // ========== CARDIO LOGGER ==========
-const CardioLogger = ({ id, onClose, onUpdateSessionLogs, sessionLogs, history }) => {
+const CardioLogger = ({ id, onClose, onUpdateSessionLogs, sessionLogs, history, settings }) => {
   const eq = EQUIPMENT_DB[id] || { name: 'Cardio', emoji: '🏃' };
   const isRunning = eq?.cardioGroup === 'running';
   const isSwimming = eq?.cardioGroup === 'swimming';
   const [entries, setEntries] = useState(sessionLogs || []);
   const [showForm, setShowForm] = useState(false);
-  const [movement, setMovement] = useState('run');
   const [environment, setEnvironment] = useState('road');
   const [durationMin, setDurationMin] = useState('');
   const [distance, setDistance] = useState('');
   const [distanceUnit, setDistanceUnit] = useState('mi');
-  const [incline, setIncline] = useState('');
-  const [effort, setEffort] = useState('');
-  const [calories, setCalories] = useState('');
-  const [caloriesSource, setCaloriesSource] = useState('');
-  const [notes, setNotes] = useState('');
   const [swimMode, setSwimMode] = useState('laps');
   const [poolType, setPoolType] = useState('25yd');
   const [laps, setLaps] = useState('');
   const [stroke, setStroke] = useState('');
+  const [effort, setEffort] = useState('moderate');
+  const [incline, setIncline] = useState('');
+  const [notes, setNotes] = useState('');
+  const [showMoreDetails, setShowMoreDetails] = useState(false);
   const durationRef = useRef(null);
 
   useEffect(() => {
@@ -4350,7 +4355,7 @@ const CardioLogger = ({ id, onClose, onUpdateSessionLogs, sessionLogs, history }
     if (!entry) return null;
     const mins = Number(entry.durationMin ?? entry.minutes);
     const dist = Number(entry.distance);
-    const env = entry.environment || entry.surface;
+    const env = entry.environment;
     const entryEffort = entry.effort;
     const parts = [];
     if (Number.isFinite(mins) && mins > 0) parts.push(`${mins} min`);
@@ -4377,89 +4382,47 @@ const CardioLogger = ({ id, onClose, onUpdateSessionLogs, sessionLogs, history }
     return parts.join(' · ');
   };
 
-  const lastSession = (history || []).slice(-1)[0];
-  const lastEntry = lastSession?.entries?.slice(-1)[0];
-  const lastRunningSummary = isRunning ? buildRunningSummary(lastEntry) : null;
-  const lastSwimSummary = isSwimming ? buildSwimSummary(lastEntry) : null;
+  const lastRunningEntry = useMemo(() => {
+    if (!isRunning) return null;
+    const sessions = Array.isArray(history) ? history : [];
+    for (let i = sessions.length - 1; i >= 0; i -= 1) {
+      const entriesList = sessions[i]?.entries || [];
+      for (let j = entriesList.length - 1; j >= 0; j -= 1) {
+        const entry = entriesList[j];
+        if (entry?.kind === 'cardio') return entry;
+      }
+    }
+    return null;
+  }, [history, isRunning]);
 
-  const handleAddRunningEntry = () => {
-    const mins = Number(durationMin);
-    if (!mins || mins <= 0) return;
-    const dist = distance ? Number(distance) : null;
-    const hasDistance = Number.isFinite(dist) && dist > 0;
-    const hasDuration = Number.isFinite(mins) && mins > 0;
-    const computedAvgSpeed = hasDistance && hasDuration ? dist / (mins / 60) : null;
-    const computedPace = hasDistance && hasDuration ? mins / dist : null;
-    const entry = {
-      id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-      dateISO: toDayKey(new Date()),
-      ts: Date.now(),
-      kind: 'cardio',
-      movement,
-      environment,
-      durationMin: mins,
-      distance: dist,
-      distanceUnit: dist ? distanceUnit : null,
-      incline: environment === 'treadmill' && incline ? Number(incline) : null,
-      effort: effort || null,
-      calories: calories ? Number(calories) : null,
-      caloriesSource: calories ? (caloriesSource || null) : null,
-      avgSpeed: dist ? computedAvgSpeed : null,
-      pacePerUnit: dist ? computedPace : null,
-      notes: notes ? notes.trim() : null
-    };
-    const nextEntries = [...entries, entry];
-    setEntries(nextEntries);
-    onUpdateSessionLogs?.(id, nextEntries);
-    setShowForm(false);
-    setDurationMin('');
-    setDistance('');
-    setIncline('');
-    setEffort('');
-    setCalories('');
-    setCaloriesSource('');
-    setNotes('');
-  };
+  const lastSwimEntry = useMemo(() => {
+    if (!isSwimming) return null;
+    const sessions = Array.isArray(history) ? history : [];
+    for (let i = sessions.length - 1; i >= 0; i -= 1) {
+      const entriesList = sessions[i]?.entries || [];
+      for (let j = entriesList.length - 1; j >= 0; j -= 1) {
+        const entry = entriesList[j];
+        if (entry?.kind === 'cardio') return entry;
+      }
+    }
+    return null;
+  }, [history, isSwimming]);
 
-  const handleAddSwimEntry = () => {
-    const mins = Number(durationMin);
-    if (!mins || mins <= 0) return;
-    const lapCount = swimMode === 'laps' && laps ? Number(laps) : null;
-    const distanceValue = swimMode === 'distance' && distance ? Number(distance) : null;
-    const computedDistance = swimMode === 'laps' && lapCount && poolLength ? lapCount * poolLength : distanceValue;
-    const hasDistance = Number.isFinite(computedDistance) && computedDistance > 0;
-    const hasDuration = Number.isFinite(mins) && mins > 0;
-    const computedPace = hasDistance && hasDuration ? (mins * 100) / computedDistance : null;
-    const entry = {
-      id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-      dateISO: toDayKey(new Date()),
-      ts: Date.now(),
-      kind: 'cardio',
-      swimMode,
-      poolType: poolType || null,
-      durationMin: mins,
-      laps: lapCount,
-      distance: computedDistance || null,
-      stroke: stroke || null,
-      effort: effort || null,
-      calories: calories ? Number(calories) : null,
-      caloriesSource: calories ? (caloriesSource || null) : null,
-      pacePer100: computedDistance ? computedPace : null,
-      notes: notes ? notes.trim() : null
-    };
-    const nextEntries = [...entries, entry];
-    setEntries(nextEntries);
-    onUpdateSessionLogs?.(id, nextEntries);
-    setShowForm(false);
-    setDurationMin('');
-    setDistance('');
-    setLaps('');
-    setEffort('');
-    setCalories('');
-    setCaloriesSource('');
-    setStroke('');
-    setNotes('');
-  };
+  const lastRunningSummary = isRunning ? buildRunningSummary(lastRunningEntry) : null;
+  const lastSwimSummary = isSwimming ? buildSwimSummary(lastSwimEntry) : null;
+
+  const smartSuggestionsEnabled = settings?.smartSuggestionsEnabled !== false;
+  const lastRunningDuration = Number(lastRunningEntry?.durationMin ?? lastRunningEntry?.minutes);
+  const lastRunningDistance = Number(lastRunningEntry?.distance);
+  const lastRunningUnit = getDistanceUnitLabel(lastRunningEntry);
+  const canSuggestRunning = smartSuggestionsEnabled
+    && isRunning
+    && Number.isFinite(lastRunningDuration)
+    && lastRunningDuration > 0
+    && Number.isFinite(lastRunningDistance)
+    && lastRunningDistance > 0;
+  const suggestedDuration = canSuggestRunning ? Math.round(lastRunningDuration + 2) : null;
+  const suggestedDistance = canSuggestRunning ? Number((lastRunningDistance * 1.05).toFixed(2)) : null;
 
   const removeEntry = (entryId) => {
     const nextEntries = entries.filter(entry => entry.id !== entryId);
@@ -4469,17 +4432,105 @@ const CardioLogger = ({ id, onClose, onUpdateSessionLogs, sessionLogs, history }
 
   const durationValue = Number(durationMin);
   const distanceValue = Number(distance);
-  const hasRunningMetrics = Number.isFinite(durationValue) && durationValue > 0 && Number.isFinite(distanceValue) && distanceValue > 0;
-  const runningPace = hasRunningMetrics ? formatPace(durationValue / distanceValue) : null;
-  const runningSpeed = hasRunningMetrics ? (distanceValue / (durationValue / 60)) : null;
+  const hasDuration = Number.isFinite(durationValue) && durationValue > 0;
+  const hasRunningDistance = Number.isFinite(distanceValue) && distanceValue > 0;
+  const canSaveRunning = hasDuration && hasRunningDistance;
 
-  const swimDistance = (() => {
-    if (swimMode === 'laps' && laps && poolLength) return Number(laps) * poolLength;
-    if (swimMode === 'distance' && distance) return Number(distance);
+  const lapsValue = Number(laps);
+  const hasLaps = Number.isFinite(lapsValue) && lapsValue > 0;
+  const swimDistanceValue = (() => {
+    if (swimMode === 'laps' && hasLaps && poolLength) return lapsValue * poolLength;
+    if (swimMode === 'distance' && Number.isFinite(distanceValue) && distanceValue > 0) return distanceValue;
     return null;
   })();
-  const hasSwimMetrics = Number.isFinite(swimDistance) && swimDistance > 0 && Number.isFinite(durationValue) && durationValue > 0;
-  const swimPace = hasSwimMetrics ? formatPace((durationValue * 100) / swimDistance) : null;
+  const swimDistanceRequired = swimMode === 'laps' || swimMode === 'distance';
+  const hasSwimDistance = !swimDistanceRequired || (Number.isFinite(swimDistanceValue) && swimDistanceValue > 0);
+  const canSaveSwim = hasDuration && hasSwimDistance;
+
+  const runningPace = canSaveRunning ? formatPace(durationValue / distanceValue) : null;
+  const runningSpeed = canSaveRunning ? (distanceValue / (durationValue / 60)) : null;
+  const swimPace = hasDuration && Number.isFinite(swimDistanceValue) && swimDistanceValue > 0
+    ? formatPace((durationValue * 100) / swimDistanceValue)
+    : null;
+
+  const resetForm = () => {
+    setDurationMin('');
+    setDistance('');
+    setDistanceUnit('mi');
+    setEnvironment('road');
+    setIncline('');
+    setEffort('moderate');
+    setSwimMode('laps');
+    setPoolType('25yd');
+    setLaps('');
+    setStroke('');
+    setNotes('');
+    setShowMoreDetails(false);
+  };
+
+  const handleAddRunningEntry = () => {
+    if (!canSaveRunning) return;
+    const mins = Number(durationMin);
+    const dist = Number(distance);
+    const pacePerUnit = mins / dist;
+    const entry = {
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      dateISO: toDayKey(new Date()),
+      ts: Date.now(),
+      kind: 'cardio',
+      mode: 'running',
+      durationMin: mins,
+      distance: dist,
+      distanceUnit,
+      environment,
+      incline: environment === 'treadmill' && incline ? Number(incline) : null,
+      swimMode: null,
+      poolType: null,
+      laps: null,
+      stroke: null,
+      effort: effort || null,
+      pacePerUnit: Number.isFinite(pacePerUnit) ? pacePerUnit : null,
+      pacePer100: null,
+      notes: notes ? notes.trim() : null
+    };
+    const nextEntries = [...entries, entry];
+    setEntries(nextEntries);
+    onUpdateSessionLogs?.(id, nextEntries);
+    setShowForm(false);
+    resetForm();
+  };
+
+  const handleAddSwimEntry = () => {
+    if (!canSaveSwim) return;
+    const mins = Number(durationMin);
+    const computedDistance = Number.isFinite(swimDistanceValue) ? swimDistanceValue : null;
+    const pacePer100 = computedDistance ? (mins * 100) / computedDistance : null;
+    const entry = {
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      dateISO: toDayKey(new Date()),
+      ts: Date.now(),
+      kind: 'cardio',
+      mode: 'swim',
+      durationMin: mins,
+      distance: computedDistance,
+      distanceUnit: computedDistance ? poolUnitLabel : null,
+      environment: null,
+      incline: null,
+      swimMode,
+      poolType: poolType || null,
+      laps: swimMode === 'laps' && hasLaps ? lapsValue : null,
+      stroke: stroke || null,
+      effort: effort || null,
+      pacePerUnit: null,
+      pacePer100: Number.isFinite(pacePer100) ? pacePer100 : null,
+      notes: notes ? notes.trim() : null
+    };
+    const nextEntries = [...entries, entry];
+    setEntries(nextEntries);
+    onUpdateSessionLogs?.(id, nextEntries);
+    setShowForm(false);
+    resetForm();
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-gray-50">
@@ -4520,22 +4571,27 @@ const CardioLogger = ({ id, onClose, onUpdateSessionLogs, sessionLogs, history }
           </div>
           {showForm && (
             <div className="space-y-3 pt-2">
+              {canSuggestRunning && (
+                <div className="rounded-xl border border-purple-100 bg-purple-50 p-3 space-y-2">
+                  <div className="text-xs font-bold text-purple-700 uppercase">Smart suggestion</div>
+                  <div className="text-xs text-purple-700">Last time: {lastRunningSummary}</div>
+                  <div className="text-xs text-purple-700">
+                    Suggested: {suggestedDuration} min · {suggestedDistance} {lastRunningUnit}
+                  </div>
+                  <button
+                    onClick={() => {
+                      setDurationMin(String(suggestedDuration));
+                      setDistance(String(suggestedDistance));
+                      setDistanceUnit(lastRunningEntry?.distanceUnit || distanceUnit);
+                    }}
+                    className="px-3 py-2 rounded-lg text-xs font-bold workout-accent-solid shadow-sm active:scale-[0.98]"
+                  >
+                    Use suggestion
+                  </button>
+                </div>
+              )}
               {isRunning && (
                 <>
-                  <div>
-                    <div className="text-xs font-bold text-gray-500 uppercase mb-2">Movement</div>
-                    <div className="flex flex-wrap gap-2">
-                      {['walk', 'run', 'hybrid'].map(option => (
-                        <button
-                          key={option}
-                          onClick={() => setMovement(option)}
-                          className={`px-3 py-2 rounded-full text-xs font-bold border ${movement === option ? 'workout-accent-solid border-transparent' : 'border-gray-200 text-gray-600'}`}
-                        >
-                          {option.charAt(0).toUpperCase() + option.slice(1)}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
                   <div>
                     <div className="text-xs font-bold text-gray-500 uppercase mb-2">Environment</div>
                     <div className="grid grid-cols-2 gap-2">
@@ -4557,7 +4613,7 @@ const CardioLogger = ({ id, onClose, onUpdateSessionLogs, sessionLogs, history }
                       type="number"
                       value={durationMin}
                       onChange={(e) => setDurationMin(e.target.value)}
-                      placeholder="20"
+                      placeholder="e.g. 30"
                       className="w-full text-lg font-bold text-center p-3 border-2 border-gray-200 rounded-xl workout-accent-focus outline-none bg-white text-gray-900"
                     />
                   </div>
@@ -4568,7 +4624,7 @@ const CardioLogger = ({ id, onClose, onUpdateSessionLogs, sessionLogs, history }
                         type="number"
                         value={distance}
                         onChange={(e) => setDistance(e.target.value)}
-                        placeholder="1.5"
+                        placeholder="e.g. 1.50"
                         className="w-full text-base font-semibold text-center p-3 border-2 border-gray-200 rounded-xl workout-accent-focus outline-none bg-white text-gray-900"
                       />
                     </div>
@@ -4584,77 +4640,66 @@ const CardioLogger = ({ id, onClose, onUpdateSessionLogs, sessionLogs, history }
                       </select>
                     </div>
                   </div>
-                  {environment === 'treadmill' && (
-                    <div>
-                      <div className="text-xs font-bold text-gray-500 uppercase mb-2">Incline (%)</div>
-                      <input
-                        type="number"
-                        value={incline}
-                        onChange={(e) => setIncline(e.target.value)}
-                        placeholder="2.0"
-                        className="w-full text-base font-semibold text-center p-3 border-2 border-gray-200 rounded-xl workout-accent-focus outline-none bg-white text-gray-900"
-                      />
-                    </div>
-                  )}
-                  <div>
-                    <div className="text-xs font-bold text-gray-500 uppercase mb-2">Effort</div>
-                    <div className="flex gap-2">
-                      {['easy', 'moderate', 'hard'].map(option => (
-                        <button
-                          key={option}
-                          onClick={() => setEffort(option)}
-                          className={`px-3 py-2 rounded-full text-xs font-bold border ${effort === option ? 'workout-accent-solid border-transparent' : 'border-gray-200 text-gray-600'}`}
-                        >
-                          {option.charAt(0).toUpperCase() + option.slice(1)}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-[1fr_auto] gap-2">
-                    <div>
-                      <div className="text-xs font-bold text-gray-500 uppercase mb-2">Calories</div>
-                      <input
-                        type="number"
-                        value={calories}
-                        onChange={(e) => setCalories(e.target.value)}
-                        placeholder="150"
-                        className="w-full text-base font-semibold text-center p-3 border-2 border-gray-200 rounded-xl workout-accent-focus outline-none bg-white text-gray-900"
-                      />
-                    </div>
-                    <div>
-                      <div className="text-xs font-bold text-gray-500 uppercase mb-2">Source</div>
-                      <select
-                        value={caloriesSource}
-                        onChange={(e) => setCaloriesSource(e.target.value)}
-                        className="w-full p-3 rounded-xl border-2 border-gray-200 bg-white text-gray-900 font-semibold"
-                      >
-                        <option value="">--</option>
-                        <option value="machine">Machine</option>
-                        <option value="estimate">Estimate</option>
-                      </select>
-                    </div>
-                  </div>
                   {(runningPace || runningSpeed) && (
-                    <div className="text-xs text-gray-500 space-y-1">
-                      {runningPace && <div>Pace: {runningPace} / {distanceUnit}</div>}
-                      {runningSpeed && <div>Avg speed: {runningSpeed.toFixed(1)} {distanceUnit}/h</div>}
+                    <div className="text-xs text-gray-500">
+                      {runningPace && runningSpeed && `Pace: ${runningPace} / ${distanceUnit} · Avg speed: ${runningSpeed.toFixed(1)} ${distanceUnit}/h`}
+                      {runningPace && !runningSpeed && `Pace: ${runningPace} / ${distanceUnit}`}
                     </div>
                   )}
                   <div>
-                    <div className="text-xs font-bold text-gray-500 uppercase mb-2">Notes</div>
-                    <textarea
-                      value={notes}
-                      onChange={(e) => setNotes(e.target.value)}
-                      placeholder="How did it feel?"
-                      className="w-full p-3 border-2 border-gray-200 rounded-xl workout-accent-focus outline-none bg-white text-gray-900 min-h-[80px]"
-                    />
+                    <button
+                      onClick={() => setShowMoreDetails(prev => !prev)}
+                      className="w-full flex items-center justify-between px-3 py-2 rounded-xl border border-gray-200 text-xs font-bold text-gray-600"
+                    >
+                      <span>More details</span>
+                      <Icon name="ChevronDown" className={`w-4 h-4 transition-transform ${showMoreDetails ? 'rotate-180' : ''}`} />
+                    </button>
                   </div>
+                  {showMoreDetails && (
+                    <div className="space-y-3 animate-expand">
+                      <div>
+                        <div className="text-xs font-bold text-gray-500 uppercase mb-2">Effort</div>
+                        <div className="flex gap-2">
+                          {['easy', 'moderate', 'hard'].map(option => (
+                            <button
+                              key={option}
+                              onClick={() => setEffort(option)}
+                              className={`px-3 py-2 rounded-full text-xs font-bold border ${effort === option ? 'workout-accent-solid border-transparent' : 'border-gray-200 text-gray-600'}`}
+                            >
+                              {option.charAt(0).toUpperCase() + option.slice(1)}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      {environment === 'treadmill' && (
+                        <div>
+                          <div className="text-xs font-bold text-gray-500 uppercase mb-2">Incline (%)</div>
+                          <input
+                            type="number"
+                            value={incline}
+                            onChange={(e) => setIncline(e.target.value)}
+                            placeholder="e.g. 2.0"
+                            className="w-full text-base font-semibold text-center p-3 border-2 border-gray-200 rounded-xl workout-accent-focus outline-none bg-white text-gray-900"
+                          />
+                        </div>
+                      )}
+                      <div>
+                        <div className="text-xs font-bold text-gray-500 uppercase mb-2">Notes</div>
+                        <textarea
+                          value={notes}
+                          onChange={(e) => setNotes(e.target.value)}
+                          placeholder="How did it feel?"
+                          className="w-full p-3 border-2 border-gray-200 rounded-xl workout-accent-focus outline-none bg-white text-gray-900 min-h-[80px]"
+                        />
+                      </div>
+                    </div>
+                  )}
                   <div className="flex items-center gap-2">
                     <button
                       onClick={handleAddRunningEntry}
-                      disabled={!durationMin}
+                      disabled={!canSaveRunning}
                       className={`flex-1 py-3 rounded-xl font-bold transition-all active:scale-[0.98] ${
-                        durationMin ? 'workout-accent-solid shadow-lg' : 'bg-gray-300 cursor-not-allowed'
+                        canSaveRunning ? 'workout-accent-solid shadow-lg' : 'bg-gray-300 cursor-not-allowed'
                       }`}
                     >
                       Save Entry
@@ -4705,7 +4750,7 @@ const CardioLogger = ({ id, onClose, onUpdateSessionLogs, sessionLogs, history }
                       type="number"
                       value={durationMin}
                       onChange={(e) => setDurationMin(e.target.value)}
-                      placeholder="30"
+                      placeholder="e.g. 30"
                       className="w-full text-lg font-bold text-center p-3 border-2 border-gray-200 rounded-xl workout-accent-focus outline-none bg-white text-gray-900"
                     />
                   </div>
@@ -4716,7 +4761,7 @@ const CardioLogger = ({ id, onClose, onUpdateSessionLogs, sessionLogs, history }
                         type="number"
                         value={laps}
                         onChange={(e) => setLaps(e.target.value)}
-                        placeholder="20"
+                        placeholder="e.g. 20"
                         className="w-full text-base font-semibold text-center p-3 border-2 border-gray-200 rounded-xl workout-accent-focus outline-none bg-white text-gray-900"
                       />
                     </div>
@@ -4728,7 +4773,7 @@ const CardioLogger = ({ id, onClose, onUpdateSessionLogs, sessionLogs, history }
                         type="number"
                         value={distance}
                         onChange={(e) => setDistance(e.target.value)}
-                        placeholder="800"
+                        placeholder="e.g. 800"
                         className="w-full text-base font-semibold text-center p-3 border-2 border-gray-200 rounded-xl workout-accent-focus outline-none bg-white text-gray-900"
                       />
                     </div>
@@ -4747,62 +4792,51 @@ const CardioLogger = ({ id, onClose, onUpdateSessionLogs, sessionLogs, history }
                       ))}
                     </div>
                   </div>
-                  <div>
-                    <div className="text-xs font-bold text-gray-500 uppercase mb-2">Effort</div>
-                    <div className="flex gap-2">
-                      {['easy', 'moderate', 'hard'].map(option => (
-                        <button
-                          key={option}
-                          onClick={() => setEffort(option)}
-                          className={`px-3 py-2 rounded-full text-xs font-bold border ${effort === option ? 'workout-accent-solid border-transparent' : 'border-gray-200 text-gray-600'}`}
-                        >
-                          {option.charAt(0).toUpperCase() + option.slice(1)}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-[1fr_auto] gap-2">
-                    <div>
-                      <div className="text-xs font-bold text-gray-500 uppercase mb-2">Calories</div>
-                      <input
-                        type="number"
-                        value={calories}
-                        onChange={(e) => setCalories(e.target.value)}
-                        placeholder="250"
-                        className="w-full text-base font-semibold text-center p-3 border-2 border-gray-200 rounded-xl workout-accent-focus outline-none bg-white text-gray-900"
-                      />
-                    </div>
-                    <div>
-                      <div className="text-xs font-bold text-gray-500 uppercase mb-2">Source</div>
-                      <select
-                        value={caloriesSource}
-                        onChange={(e) => setCaloriesSource(e.target.value)}
-                        className="w-full p-3 rounded-xl border-2 border-gray-200 bg-white text-gray-900 font-semibold"
-                      >
-                        <option value="">--</option>
-                        <option value="machine">Machine</option>
-                        <option value="estimate">Estimate</option>
-                      </select>
-                    </div>
-                  </div>
                   {swimPace && (
                     <div className="text-xs text-gray-500">Pace: {swimPace} per 100 {poolUnitLabel}</div>
                   )}
                   <div>
-                    <div className="text-xs font-bold text-gray-500 uppercase mb-2">Notes</div>
-                    <textarea
-                      value={notes}
-                      onChange={(e) => setNotes(e.target.value)}
-                      placeholder="How did it feel?"
-                      className="w-full p-3 border-2 border-gray-200 rounded-xl workout-accent-focus outline-none bg-white text-gray-900 min-h-[80px]"
-                    />
+                    <button
+                      onClick={() => setShowMoreDetails(prev => !prev)}
+                      className="w-full flex items-center justify-between px-3 py-2 rounded-xl border border-gray-200 text-xs font-bold text-gray-600"
+                    >
+                      <span>More details</span>
+                      <Icon name="ChevronDown" className={`w-4 h-4 transition-transform ${showMoreDetails ? 'rotate-180' : ''}`} />
+                    </button>
                   </div>
+                  {showMoreDetails && (
+                    <div className="space-y-3 animate-expand">
+                      <div>
+                        <div className="text-xs font-bold text-gray-500 uppercase mb-2">Effort</div>
+                        <div className="flex gap-2">
+                          {['easy', 'moderate', 'hard'].map(option => (
+                            <button
+                              key={option}
+                              onClick={() => setEffort(option)}
+                              className={`px-3 py-2 rounded-full text-xs font-bold border ${effort === option ? 'workout-accent-solid border-transparent' : 'border-gray-200 text-gray-600'}`}
+                            >
+                              {option.charAt(0).toUpperCase() + option.slice(1)}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-xs font-bold text-gray-500 uppercase mb-2">Notes</div>
+                        <textarea
+                          value={notes}
+                          onChange={(e) => setNotes(e.target.value)}
+                          placeholder="How did it feel?"
+                          className="w-full p-3 border-2 border-gray-200 rounded-xl workout-accent-focus outline-none bg-white text-gray-900 min-h-[80px]"
+                        />
+                      </div>
+                    </div>
+                  )}
                   <div className="flex items-center gap-2">
                     <button
                       onClick={handleAddSwimEntry}
-                      disabled={!durationMin}
+                      disabled={!canSaveSwim}
                       className={`flex-1 py-3 rounded-xl font-bold transition-all active:scale-[0.98] ${
-                        durationMin ? 'workout-accent-solid shadow-lg' : 'bg-gray-300 cursor-not-allowed'
+                        canSaveSwim ? 'workout-accent-solid shadow-lg' : 'bg-gray-300 cursor-not-allowed'
                       }`}
                     >
                       Save Entry
@@ -4853,7 +4887,6 @@ const CardioLogger = ({ id, onClose, onUpdateSessionLogs, sessionLogs, history }
     </div>
   );
 };
-
 // ========== MAIN APP ==========
     const App = () => {
       const [loaded, setLoaded] = useState(false);
@@ -4867,7 +4900,7 @@ const CardioLogger = ({ id, onClose, onUpdateSessionLogs, sessionLogs, history }
         onboarded: false
       });
 
-      const [settings, setSettings] = useState({ insightsEnabled: true, darkMode: false, darkAccent: 'purple', showAllExercises: false, pinnedExercises: [], workoutViewMode: 'all', suggestedWorkoutCollapsed: true });
+      const [settings, setSettings] = useState({ insightsEnabled: true, smartSuggestionsEnabled: true, darkMode: false, darkAccent: 'purple', showAllExercises: false, pinnedExercises: [], workoutViewMode: 'all', suggestedWorkoutCollapsed: true });
       const [themeMode, setThemeModeState] = useState('light');
       const [darkVariant, setDarkVariantState] = useState('blue');
       const [history, setHistory] = useState({});
@@ -5019,7 +5052,7 @@ const CardioLogger = ({ id, onClose, onUpdateSessionLogs, sessionLogs, history }
       useEffect(() => {
         const savedOnboarding = storage.get(ONBOARDING_KEY, false);
         const savedProfileRaw = storage.get('ps_v2_profile', null);
-        const settingsDefaults = { insightsEnabled: true, darkMode: false, darkAccent: 'purple', showAllExercises: false, pinnedExercises: [], workoutViewMode: 'all', suggestedWorkoutCollapsed: true };
+        const settingsDefaults = { insightsEnabled: true, smartSuggestionsEnabled: true, darkMode: false, darkAccent: 'purple', showAllExercises: false, pinnedExercises: [], workoutViewMode: 'all', suggestedWorkoutCollapsed: true };
         const savedSettings = storage.get('ps_v2_settings', settingsDefaults);
         const savedHistory = storage.get('ps_v2_history', {});
         const savedCardio = storage.get('ps_v2_cardio', {});
@@ -6097,7 +6130,7 @@ const CardioLogger = ({ id, onClose, onUpdateSessionLogs, sessionLogs, history }
           setView('onboarding');
           setTab('home');
           setAppState({ lastWorkoutType: null, lastWorkoutDayKey: null, restDays: [] });
-          setSettings({ insightsEnabled: true, darkMode: false, darkAccent: 'purple', showAllExercises: false, pinnedExercises: [], workoutViewMode: 'all', suggestedWorkoutCollapsed: true });
+          setSettings({ insightsEnabled: true, smartSuggestionsEnabled: true, darkMode: false, darkAccent: 'purple', showAllExercises: false, pinnedExercises: [], workoutViewMode: 'all', suggestedWorkoutCollapsed: true });
           setPinnedExercises([]);
           setFavoriteExercises([]);
           setRecentExercises([]);
@@ -6110,7 +6143,7 @@ const CardioLogger = ({ id, onClose, onUpdateSessionLogs, sessionLogs, history }
           storage.set('ps_v2_history', {});
           storage.set('ps_v2_cardio', {});
           storage.set('ps_v2_state', { lastWorkoutType: null, lastWorkoutDayKey: null, restDays: [] });
-          storage.set('ps_v2_settings', { insightsEnabled: true, darkMode: false, darkAccent: 'purple', showAllExercises: false, pinnedExercises: [], workoutViewMode: 'all', suggestedWorkoutCollapsed: true });
+          storage.set('ps_v2_settings', { insightsEnabled: true, smartSuggestionsEnabled: true, darkMode: false, darkAccent: 'purple', showAllExercises: false, pinnedExercises: [], workoutViewMode: 'all', suggestedWorkoutCollapsed: true });
           storage.set(STORAGE_KEY, { version: STORAGE_VERSION, pinnedExercises: [], recentExercises: [], exerciseUsageCounts: {}, dayEntries: {}, lastExerciseStats: {} });
           storage.set(ONBOARDING_KEY, false);
           storage.set('ps_dismissed_draft_date', null);
@@ -6439,6 +6472,7 @@ return (
                 onUpdateSessionLogs={updateSessionLogs}
                 sessionLogs={activeSessionToday?.logsByExercise?.[activeCardio] || []}
                 history={history[activeCardio] || []}
+                settings={settings}
                 onClose={() => setActiveCardio(null)}
               />
             )}
