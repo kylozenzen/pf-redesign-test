@@ -490,8 +490,7 @@ const motivationalQuotes = [
         target: "Cardio",
         tags: ["Cardio", "Full Body"],
         cardioGroup: "running",
-        emoji: "🏃",
-        comingSoon: true
+        emoji: "🏃"
       },
       "cardio_swimming": {
         type: 'cardio',
@@ -499,8 +498,7 @@ const motivationalQuotes = [
         target: "Cardio",
         tags: ["Cardio", "Full Body"],
         cardioGroup: "swimming",
-        emoji: "🏊",
-        comingSoon: true
+        emoji: "🏊"
       },
       // ========== MACHINES ==========
       "chest_press": { 
@@ -2645,7 +2643,7 @@ const Workout = ({ profile, onSelectExercise, settings, setSettings, pinnedExerc
                           onClick={(e) => { e.stopPropagation(); onSelectExercise(entryId, 'session'); }}
                           className="session-action-button"
                         >
-                          + Set
+                          + {entry.kind === 'cardio' ? 'Entry' : 'Set'}
                         </button>
                       )}
                       {entry.kind !== 'cardio' && (
@@ -3763,11 +3761,17 @@ const PlateCalculator = ({ targetWeight, barWeight, onClose }) => {
                               
                               {isCardio ? (
                                 <div className="text-xs text-gray-600">
-                                  {(session.entries || []).slice(0, 2).map((entry, i) => (
-                                    <div key={i} className="text-gray-500">
-                                      {entry.minutes} min{entry.distance ? ` • ${entry.distance} ${entry.distanceUnit}` : ''}
-                                    </div>
-                                  ))}
+                                  {(session.entries || []).slice(0, 2).map((entry, i) => {
+                                    const entryDuration = entry.durationMin || entry.minutes;
+                                    const durationLabel = entryDuration ? `${entryDuration} min` : 'Time logged';
+                                    const entryUnit = entry.distanceUnit || (entry.poolType === '25m' || entry.poolType === '50m' ? 'm' : entry.poolType === '25yd' ? 'yd' : '');
+                                    const unitLabel = entryUnit ? ` ${entryUnit}` : '';
+                                    return (
+                                      <div key={i} className="text-gray-500">
+                                        {durationLabel}{entry.distance ? ` • ${entry.distance}${unitLabel}` : ''}
+                                      </div>
+                                    );
+                                  })}
                                   {(session.entries || []).length > 2 && (
                                     <div className="text-[11px] text-gray-400">+{session.entries.length - 2} more entries</div>
                                   )}
@@ -4250,47 +4254,211 @@ const PlateCalculator = ({ targetWeight, barWeight, onClose }) => {
       );
     };
 
-    // ========== CARDIO LOGGER ==========
-const CardioLogger = ({ id, onClose, onUpdateSessionLogs, sessionLogs }) => {
+// ========== CARDIO LOGGER ==========
+const CardioLogger = ({ id, onClose, onUpdateSessionLogs, sessionLogs, history }) => {
   const eq = EQUIPMENT_DB[id] || { name: 'Cardio', emoji: '🏃' };
+  const isRunning = eq?.cardioGroup === 'running';
+  const isSwimming = eq?.cardioGroup === 'swimming';
   const [entries, setEntries] = useState(sessionLogs || []);
-  const [minutes, setMinutes] = useState('');
+  const [showForm, setShowForm] = useState(false);
+  const [movement, setMovement] = useState('run');
+  const [environment, setEnvironment] = useState('road');
+  const [durationMin, setDurationMin] = useState('');
   const [distance, setDistance] = useState('');
   const [distanceUnit, setDistanceUnit] = useState('mi');
   const [incline, setIncline] = useState('');
+  const [effort, setEffort] = useState('');
+  const [calories, setCalories] = useState('');
+  const [caloriesSource, setCaloriesSource] = useState('');
   const [notes, setNotes] = useState('');
-  const minutesRef = useRef(null);
+  const [swimMode, setSwimMode] = useState('laps');
+  const [poolType, setPoolType] = useState('25yd');
+  const [laps, setLaps] = useState('');
+  const [stroke, setStroke] = useState('');
+  const durationRef = useRef(null);
 
   useEffect(() => {
     setEntries(sessionLogs || []);
   }, [sessionLogs, id]);
 
   useEffect(() => {
-    requestAnimationFrame(() => minutesRef.current?.focus());
-  }, [id]);
+    if (showForm) {
+      requestAnimationFrame(() => durationRef.current?.focus());
+    }
+  }, [showForm, id]);
 
-  const handleAddEntry = () => {
-    const mins = Number(minutes);
+  useEffect(() => {
+    if (swimMode === 'laps') {
+      setDistance('');
+    }
+    if (swimMode === 'distance') {
+      setLaps('');
+    }
+    if (swimMode === 'time_only') {
+      setDistance('');
+      setLaps('');
+    }
+  }, [swimMode]);
+
+  const formatPace = (value) => {
+    if (!Number.isFinite(value)) return null;
+    const totalSeconds = Math.round(value * 60);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  };
+
+  const getDistanceUnitLabel = (entry) => entry?.distanceUnit || distanceUnit || 'mi';
+
+  const getPoolUnitLabel = (pool) => {
+    if (pool === '25m' || pool === '50m') return 'm';
+    return 'yd';
+  };
+
+  const getRunningEnvironmentLabel = (env) => {
+    const map = {
+      treadmill: 'Treadmill',
+      indoor_track: 'Indoor track',
+      outdoor_track: 'Outdoor track',
+      road: 'Road',
+      trail: 'Trail',
+      other: 'Other'
+    };
+    return map[env] || (env ? env.replace(/_/g, ' ') : '');
+  };
+
+  const getPoolTypeLabel = (pool) => {
+    const map = {
+      '25yd': '25 yd',
+      '25m': '25 m',
+      '50m': '50 m',
+      open_water: 'Open water'
+    };
+    return map[pool] || (pool ? pool.replace(/_/g, ' ') : '');
+  };
+
+  const poolUnitLabel = useMemo(() => getPoolUnitLabel(poolType), [poolType]);
+
+  const poolLength = useMemo(() => {
+    if (poolType === '25yd') return 25;
+    if (poolType === '25m') return 25;
+    if (poolType === '50m') return 50;
+    return null;
+  }, [poolType]);
+
+  const buildRunningSummary = (entry) => {
+    if (!entry) return null;
+    const mins = Number(entry.durationMin ?? entry.minutes);
+    const dist = Number(entry.distance);
+    const env = entry.environment || entry.surface;
+    const entryEffort = entry.effort;
+    const parts = [];
+    if (Number.isFinite(mins) && mins > 0) parts.push(`${mins} min`);
+    if (Number.isFinite(dist) && dist > 0) parts.push(`${dist} ${getDistanceUnitLabel(entry)}`);
+    if (env) parts.push(getRunningEnvironmentLabel(env));
+    if (entryEffort) parts.push(entryEffort);
+    return parts.join(' · ');
+  };
+
+  const buildSwimSummary = (entry) => {
+    if (!entry) return null;
+    const mins = Number(entry.durationMin ?? entry.minutes);
+    const dist = Number(entry.distance);
+    const pool = entry.poolType;
+    const unitLabel = entry.distanceUnit || getPoolUnitLabel(pool);
+    const entryStroke = entry.stroke;
+    const entryEffort = entry.effort;
+    const parts = [];
+    if (Number.isFinite(mins) && mins > 0) parts.push(`${mins} min`);
+    if (Number.isFinite(dist) && dist > 0) parts.push(`${dist} ${unitLabel}`);
+    if (pool) parts.push(getPoolTypeLabel(pool));
+    if (entryStroke) parts.push(entryStroke);
+    if (entryEffort) parts.push(entryEffort);
+    return parts.join(' · ');
+  };
+
+  const lastSession = (history || []).slice(-1)[0];
+  const lastEntry = lastSession?.entries?.slice(-1)[0];
+  const lastRunningSummary = isRunning ? buildRunningSummary(lastEntry) : null;
+  const lastSwimSummary = isSwimming ? buildSwimSummary(lastEntry) : null;
+
+  const handleAddRunningEntry = () => {
+    const mins = Number(durationMin);
     if (!mins || mins <= 0) return;
+    const dist = distance ? Number(distance) : null;
+    const hasDistance = Number.isFinite(dist) && dist > 0;
+    const hasDuration = Number.isFinite(mins) && mins > 0;
+    const computedAvgSpeed = hasDistance && hasDuration ? dist / (mins / 60) : null;
+    const computedPace = hasDistance && hasDuration ? mins / dist : null;
     const entry = {
       id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       dateISO: toDayKey(new Date()),
       ts: Date.now(),
-      type: 'cardio',
-      minutes: mins,
-      distance: distance ? Number(distance) : null,
-      distanceUnit: distance ? distanceUnit : null,
-      incline: incline ? Number(incline) : null,
+      kind: 'cardio',
+      movement,
+      environment,
+      durationMin: mins,
+      distance: dist,
+      distanceUnit: dist ? distanceUnit : null,
+      incline: environment === 'treadmill' && incline ? Number(incline) : null,
+      effort: effort || null,
+      calories: calories ? Number(calories) : null,
+      caloriesSource: calories ? (caloriesSource || null) : null,
+      avgSpeed: dist ? computedAvgSpeed : null,
+      pacePerUnit: dist ? computedPace : null,
       notes: notes ? notes.trim() : null
     };
     const nextEntries = [...entries, entry];
     setEntries(nextEntries);
     onUpdateSessionLogs?.(id, nextEntries);
-    setMinutes('');
+    setShowForm(false);
+    setDurationMin('');
     setDistance('');
     setIncline('');
+    setEffort('');
+    setCalories('');
+    setCaloriesSource('');
     setNotes('');
-    requestAnimationFrame(() => minutesRef.current?.focus());
+  };
+
+  const handleAddSwimEntry = () => {
+    const mins = Number(durationMin);
+    if (!mins || mins <= 0) return;
+    const lapCount = swimMode === 'laps' && laps ? Number(laps) : null;
+    const distanceValue = swimMode === 'distance' && distance ? Number(distance) : null;
+    const computedDistance = swimMode === 'laps' && lapCount && poolLength ? lapCount * poolLength : distanceValue;
+    const hasDistance = Number.isFinite(computedDistance) && computedDistance > 0;
+    const hasDuration = Number.isFinite(mins) && mins > 0;
+    const computedPace = hasDistance && hasDuration ? (mins * 100) / computedDistance : null;
+    const entry = {
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      dateISO: toDayKey(new Date()),
+      ts: Date.now(),
+      kind: 'cardio',
+      swimMode,
+      poolType: poolType || null,
+      durationMin: mins,
+      laps: lapCount,
+      distance: computedDistance || null,
+      stroke: stroke || null,
+      effort: effort || null,
+      calories: calories ? Number(calories) : null,
+      caloriesSource: calories ? (caloriesSource || null) : null,
+      pacePer100: computedDistance ? computedPace : null,
+      notes: notes ? notes.trim() : null
+    };
+    const nextEntries = [...entries, entry];
+    setEntries(nextEntries);
+    onUpdateSessionLogs?.(id, nextEntries);
+    setShowForm(false);
+    setDurationMin('');
+    setDistance('');
+    setLaps('');
+    setEffort('');
+    setCalories('');
+    setCaloriesSource('');
+    setStroke('');
+    setNotes('');
   };
 
   const removeEntry = (entryId) => {
@@ -4298,6 +4466,20 @@ const CardioLogger = ({ id, onClose, onUpdateSessionLogs, sessionLogs }) => {
     setEntries(nextEntries);
     onUpdateSessionLogs?.(id, nextEntries);
   };
+
+  const durationValue = Number(durationMin);
+  const distanceValue = Number(distance);
+  const hasRunningMetrics = Number.isFinite(durationValue) && durationValue > 0 && Number.isFinite(distanceValue) && distanceValue > 0;
+  const runningPace = hasRunningMetrics ? formatPace(durationValue / distanceValue) : null;
+  const runningSpeed = hasRunningMetrics ? (distanceValue / (durationValue / 60)) : null;
+
+  const swimDistance = (() => {
+    if (swimMode === 'laps' && laps && poolLength) return Number(laps) * poolLength;
+    if (swimMode === 'distance' && distance) return Number(distance);
+    return null;
+  })();
+  const hasSwimMetrics = Number.isFinite(swimDistance) && swimDistance > 0 && Number.isFinite(durationValue) && durationValue > 0;
+  const swimPace = hasSwimMetrics ? formatPace((durationValue * 100) / swimDistance) : null;
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-gray-50">
@@ -4309,6 +4491,12 @@ const CardioLogger = ({ id, onClose, onUpdateSessionLogs, sessionLogs }) => {
           <div>
             <div className="text-xs font-bold text-gray-400 uppercase tracking-wider">Cardio</div>
             <div className="text-lg font-black text-gray-900">{eq.name}</div>
+            {isRunning && lastRunningSummary && (
+              <div className="text-[11px] text-gray-500">Last: {lastRunningSummary}</div>
+            )}
+            {isSwimming && lastSwimSummary && (
+              <div className="text-[11px] text-gray-500">Last: {lastSwimSummary}</div>
+            )}
           </div>
         </div>
         <button onClick={onClose} className="p-2 rounded-full bg-gray-50 text-gray-500">
@@ -4318,73 +4506,323 @@ const CardioLogger = ({ id, onClose, onUpdateSessionLogs, sessionLogs }) => {
 
       <div className="flex-1 overflow-y-auto p-4 pb-32 space-y-4">
         <div className="bg-white border border-gray-200 rounded-2xl p-4 space-y-3">
-          <div>
-            <div className="text-xs font-bold text-gray-500 uppercase mb-2">Minutes (required)</div>
-            <input
-              ref={minutesRef}
-              type="number"
-              value={minutes}
-              onChange={(e) => setMinutes(e.target.value)}
-              placeholder="20"
-              className="w-full text-lg font-bold text-center p-3 border-2 border-gray-200 rounded-xl workout-accent-focus outline-none bg-white text-gray-900"
-            />
-          </div>
-          <div className="grid grid-cols-[1fr_auto] gap-2">
+          <div className="flex items-center justify-between">
             <div>
-              <div className="text-xs font-bold text-gray-500 uppercase mb-2">Distance (optional)</div>
-              <input
-                type="number"
-                value={distance}
-                onChange={(e) => setDistance(e.target.value)}
-                placeholder="3.2"
-                className="w-full text-base font-semibold text-center p-3 border-2 border-gray-200 rounded-xl workout-accent-focus outline-none bg-white text-gray-900"
-              />
+              <div className="text-xs font-bold text-gray-500 uppercase">{isRunning ? 'Running / Walking' : 'Swimming'}</div>
+              <div className="text-sm text-gray-500">Log today’s entry</div>
             </div>
-            <div>
-              <div className="text-xs font-bold text-gray-500 uppercase mb-2">Unit</div>
-              <select
-                value={distanceUnit}
-                onChange={(e) => setDistanceUnit(e.target.value)}
-                className="w-full p-3 rounded-xl border-2 border-gray-200 bg-white text-gray-900 font-semibold"
-              >
-                <option value="mi">mi</option>
-                <option value="km">km</option>
-              </select>
+            <button
+              onClick={() => setShowForm(prev => !prev)}
+              className="px-4 py-2 rounded-xl font-bold workout-accent-solid shadow-sm active:scale-[0.98]"
+            >
+              + Entry
+            </button>
+          </div>
+          {showForm && (
+            <div className="space-y-3 pt-2">
+              {isRunning && (
+                <>
+                  <div>
+                    <div className="text-xs font-bold text-gray-500 uppercase mb-2">Movement</div>
+                    <div className="flex flex-wrap gap-2">
+                      {['walk', 'run', 'hybrid'].map(option => (
+                        <button
+                          key={option}
+                          onClick={() => setMovement(option)}
+                          className={`px-3 py-2 rounded-full text-xs font-bold border ${movement === option ? 'workout-accent-solid border-transparent' : 'border-gray-200 text-gray-600'}`}
+                        >
+                          {option.charAt(0).toUpperCase() + option.slice(1)}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold text-gray-500 uppercase mb-2">Environment</div>
+                    <div className="grid grid-cols-2 gap-2">
+                      {['treadmill', 'indoor_track', 'outdoor_track', 'road', 'trail', 'other'].map(option => (
+                        <button
+                          key={option}
+                          onClick={() => setEnvironment(option)}
+                          className={`px-3 py-2 rounded-xl text-xs font-bold border ${environment === option ? 'workout-accent-solid border-transparent' : 'border-gray-200 text-gray-600'}`}
+                        >
+                          {option.replace('_', ' ')}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold text-gray-500 uppercase mb-2">Duration (min)</div>
+                    <input
+                      ref={durationRef}
+                      type="number"
+                      value={durationMin}
+                      onChange={(e) => setDurationMin(e.target.value)}
+                      placeholder="20"
+                      className="w-full text-lg font-bold text-center p-3 border-2 border-gray-200 rounded-xl workout-accent-focus outline-none bg-white text-gray-900"
+                    />
+                  </div>
+                  <div className="grid grid-cols-[1fr_auto] gap-2">
+                    <div>
+                      <div className="text-xs font-bold text-gray-500 uppercase mb-2">Distance</div>
+                      <input
+                        type="number"
+                        value={distance}
+                        onChange={(e) => setDistance(e.target.value)}
+                        placeholder="1.5"
+                        className="w-full text-base font-semibold text-center p-3 border-2 border-gray-200 rounded-xl workout-accent-focus outline-none bg-white text-gray-900"
+                      />
+                    </div>
+                    <div>
+                      <div className="text-xs font-bold text-gray-500 uppercase mb-2">Unit</div>
+                      <select
+                        value={distanceUnit}
+                        onChange={(e) => setDistanceUnit(e.target.value)}
+                        className="w-full p-3 rounded-xl border-2 border-gray-200 bg-white text-gray-900 font-semibold"
+                      >
+                        <option value="mi">mi</option>
+                        <option value="km">km</option>
+                      </select>
+                    </div>
+                  </div>
+                  {environment === 'treadmill' && (
+                    <div>
+                      <div className="text-xs font-bold text-gray-500 uppercase mb-2">Incline (%)</div>
+                      <input
+                        type="number"
+                        value={incline}
+                        onChange={(e) => setIncline(e.target.value)}
+                        placeholder="2.0"
+                        className="w-full text-base font-semibold text-center p-3 border-2 border-gray-200 rounded-xl workout-accent-focus outline-none bg-white text-gray-900"
+                      />
+                    </div>
+                  )}
+                  <div>
+                    <div className="text-xs font-bold text-gray-500 uppercase mb-2">Effort</div>
+                    <div className="flex gap-2">
+                      {['easy', 'moderate', 'hard'].map(option => (
+                        <button
+                          key={option}
+                          onClick={() => setEffort(option)}
+                          className={`px-3 py-2 rounded-full text-xs font-bold border ${effort === option ? 'workout-accent-solid border-transparent' : 'border-gray-200 text-gray-600'}`}
+                        >
+                          {option.charAt(0).toUpperCase() + option.slice(1)}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-[1fr_auto] gap-2">
+                    <div>
+                      <div className="text-xs font-bold text-gray-500 uppercase mb-2">Calories</div>
+                      <input
+                        type="number"
+                        value={calories}
+                        onChange={(e) => setCalories(e.target.value)}
+                        placeholder="150"
+                        className="w-full text-base font-semibold text-center p-3 border-2 border-gray-200 rounded-xl workout-accent-focus outline-none bg-white text-gray-900"
+                      />
+                    </div>
+                    <div>
+                      <div className="text-xs font-bold text-gray-500 uppercase mb-2">Source</div>
+                      <select
+                        value={caloriesSource}
+                        onChange={(e) => setCaloriesSource(e.target.value)}
+                        className="w-full p-3 rounded-xl border-2 border-gray-200 bg-white text-gray-900 font-semibold"
+                      >
+                        <option value="">--</option>
+                        <option value="machine">Machine</option>
+                        <option value="estimate">Estimate</option>
+                      </select>
+                    </div>
+                  </div>
+                  {(runningPace || runningSpeed) && (
+                    <div className="text-xs text-gray-500 space-y-1">
+                      {runningPace && <div>Pace: {runningPace} / {distanceUnit}</div>}
+                      {runningSpeed && <div>Avg speed: {runningSpeed.toFixed(1)} {distanceUnit}/h</div>}
+                    </div>
+                  )}
+                  <div>
+                    <div className="text-xs font-bold text-gray-500 uppercase mb-2">Notes</div>
+                    <textarea
+                      value={notes}
+                      onChange={(e) => setNotes(e.target.value)}
+                      placeholder="How did it feel?"
+                      className="w-full p-3 border-2 border-gray-200 rounded-xl workout-accent-focus outline-none bg-white text-gray-900 min-h-[80px]"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={handleAddRunningEntry}
+                      disabled={!durationMin}
+                      className={`flex-1 py-3 rounded-xl font-bold transition-all active:scale-[0.98] ${
+                        durationMin ? 'workout-accent-solid shadow-lg' : 'bg-gray-300 cursor-not-allowed'
+                      }`}
+                    >
+                      Save Entry
+                    </button>
+                    <button
+                      onClick={() => setShowForm(false)}
+                      className="px-3 py-3 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </>
+              )}
+              {isSwimming && (
+                <>
+                  <div>
+                    <div className="text-xs font-bold text-gray-500 uppercase mb-2">Swim mode</div>
+                    <div className="flex gap-2">
+                      {['laps', 'distance', 'time_only'].map(option => (
+                        <button
+                          key={option}
+                          onClick={() => setSwimMode(option)}
+                          className={`px-3 py-2 rounded-full text-xs font-bold border ${swimMode === option ? 'workout-accent-solid border-transparent' : 'border-gray-200 text-gray-600'}`}
+                        >
+                          {option.replace('_', ' ')}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold text-gray-500 uppercase mb-2">Pool type</div>
+                    <div className="grid grid-cols-2 gap-2">
+                      {['25yd', '25m', '50m', 'open_water'].map(option => (
+                        <button
+                          key={option}
+                          onClick={() => setPoolType(option)}
+                          className={`px-3 py-2 rounded-xl text-xs font-bold border ${poolType === option ? 'workout-accent-solid border-transparent' : 'border-gray-200 text-gray-600'}`}
+                        >
+                          {option.replace('_', ' ')}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold text-gray-500 uppercase mb-2">Duration (min)</div>
+                    <input
+                      ref={durationRef}
+                      type="number"
+                      value={durationMin}
+                      onChange={(e) => setDurationMin(e.target.value)}
+                      placeholder="30"
+                      className="w-full text-lg font-bold text-center p-3 border-2 border-gray-200 rounded-xl workout-accent-focus outline-none bg-white text-gray-900"
+                    />
+                  </div>
+                  {swimMode === 'laps' && (
+                    <div>
+                      <div className="text-xs font-bold text-gray-500 uppercase mb-2">Laps</div>
+                      <input
+                        type="number"
+                        value={laps}
+                        onChange={(e) => setLaps(e.target.value)}
+                        placeholder="20"
+                        className="w-full text-base font-semibold text-center p-3 border-2 border-gray-200 rounded-xl workout-accent-focus outline-none bg-white text-gray-900"
+                      />
+                    </div>
+                  )}
+                  {swimMode === 'distance' && (
+                    <div>
+                      <div className="text-xs font-bold text-gray-500 uppercase mb-2">Distance ({poolUnitLabel})</div>
+                      <input
+                        type="number"
+                        value={distance}
+                        onChange={(e) => setDistance(e.target.value)}
+                        placeholder="800"
+                        className="w-full text-base font-semibold text-center p-3 border-2 border-gray-200 rounded-xl workout-accent-focus outline-none bg-white text-gray-900"
+                      />
+                    </div>
+                  )}
+                  <div>
+                    <div className="text-xs font-bold text-gray-500 uppercase mb-2">Stroke</div>
+                    <div className="grid grid-cols-2 gap-2">
+                      {['freestyle', 'breaststroke', 'backstroke', 'mixed'].map(option => (
+                        <button
+                          key={option}
+                          onClick={() => setStroke(option)}
+                          className={`px-3 py-2 rounded-xl text-xs font-bold border ${stroke === option ? 'workout-accent-solid border-transparent' : 'border-gray-200 text-gray-600'}`}
+                        >
+                          {option}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold text-gray-500 uppercase mb-2">Effort</div>
+                    <div className="flex gap-2">
+                      {['easy', 'moderate', 'hard'].map(option => (
+                        <button
+                          key={option}
+                          onClick={() => setEffort(option)}
+                          className={`px-3 py-2 rounded-full text-xs font-bold border ${effort === option ? 'workout-accent-solid border-transparent' : 'border-gray-200 text-gray-600'}`}
+                        >
+                          {option.charAt(0).toUpperCase() + option.slice(1)}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-[1fr_auto] gap-2">
+                    <div>
+                      <div className="text-xs font-bold text-gray-500 uppercase mb-2">Calories</div>
+                      <input
+                        type="number"
+                        value={calories}
+                        onChange={(e) => setCalories(e.target.value)}
+                        placeholder="250"
+                        className="w-full text-base font-semibold text-center p-3 border-2 border-gray-200 rounded-xl workout-accent-focus outline-none bg-white text-gray-900"
+                      />
+                    </div>
+                    <div>
+                      <div className="text-xs font-bold text-gray-500 uppercase mb-2">Source</div>
+                      <select
+                        value={caloriesSource}
+                        onChange={(e) => setCaloriesSource(e.target.value)}
+                        className="w-full p-3 rounded-xl border-2 border-gray-200 bg-white text-gray-900 font-semibold"
+                      >
+                        <option value="">--</option>
+                        <option value="machine">Machine</option>
+                        <option value="estimate">Estimate</option>
+                      </select>
+                    </div>
+                  </div>
+                  {swimPace && (
+                    <div className="text-xs text-gray-500">Pace: {swimPace} per 100 {poolUnitLabel}</div>
+                  )}
+                  <div>
+                    <div className="text-xs font-bold text-gray-500 uppercase mb-2">Notes</div>
+                    <textarea
+                      value={notes}
+                      onChange={(e) => setNotes(e.target.value)}
+                      placeholder="How did it feel?"
+                      className="w-full p-3 border-2 border-gray-200 rounded-xl workout-accent-focus outline-none bg-white text-gray-900 min-h-[80px]"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={handleAddSwimEntry}
+                      disabled={!durationMin}
+                      className={`flex-1 py-3 rounded-xl font-bold transition-all active:scale-[0.98] ${
+                        durationMin ? 'workout-accent-solid shadow-lg' : 'bg-gray-300 cursor-not-allowed'
+                      }`}
+                    >
+                      Save Entry
+                    </button>
+                    <button
+                      onClick={() => setShowForm(false)}
+                      className="px-3 py-3 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
-          </div>
-          <div>
-            <div className="text-xs font-bold text-gray-500 uppercase mb-2">Incline (optional)</div>
-            <input
-              type="number"
-              value={incline}
-              onChange={(e) => setIncline(e.target.value)}
-              placeholder="2.0"
-              className="w-full text-base font-semibold text-center p-3 border-2 border-gray-200 rounded-xl workout-accent-focus outline-none bg-white text-gray-900"
-            />
-          </div>
-          <div>
-            <div className="text-xs font-bold text-gray-500 uppercase mb-2">Notes (optional)</div>
-            <textarea
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="How did it feel?"
-              className="w-full p-3 border-2 border-gray-200 rounded-xl workout-accent-focus outline-none bg-white text-gray-900 min-h-[80px]"
-            />
-          </div>
-          <button
-            onClick={handleAddEntry}
-            disabled={!minutes}
-            className={`w-full py-3 rounded-xl font-bold transition-all active:scale-[0.98] ${
-              minutes ? 'workout-accent-solid shadow-lg' : 'bg-gray-300 cursor-not-allowed'
-            }`}
-          >
-            Add Entry
-          </button>
+          )}
         </div>
 
         <div className="bg-white border border-gray-200 rounded-2xl p-4 space-y-2">
           <div className="flex items-center justify-between">
-            <div className="text-[10px] font-black uppercase text-gray-500">Logged entries</div>
+            <div className="text-[10px] font-black uppercase text-gray-500">Today’s entries</div>
             <div className="text-[11px] workout-accent-text font-semibold">{entries.length} entries</div>
           </div>
           {entries.length === 0 ? (
@@ -4396,9 +4834,7 @@ const CardioLogger = ({ id, onClose, onUpdateSessionLogs, sessionLogs }) => {
                   <div>
                     <div className="text-xs font-black text-gray-900">Entry {idx + 1}</div>
                     <div className="text-sm font-semibold text-gray-800">
-                      {entry.minutes} min
-                      {entry.distance ? ` • ${entry.distance} ${entry.distanceUnit}` : ''}
-                      {entry.incline ? ` • ${entry.incline}% incline` : ''}
+                      {isRunning ? buildRunningSummary(entry) : buildSwimSummary(entry)}
                     </div>
                     {entry.notes && <div className="text-[11px] text-gray-500">{entry.notes}</div>}
                   </div>
@@ -5609,7 +6045,7 @@ const CardioLogger = ({ id, onClose, onUpdateSessionLogs, sessionLogs }) => {
         if (!exerciseId) return;
         const eq = EQUIPMENT_DB[exerciseId];
         const cardioType = exerciseId.startsWith('cardio_') ? exerciseId.replace('cardio_', '') : exerciseId;
-        const totalMinutes = entries.reduce((sum, entry) => sum + (entry.minutes || 0), 0);
+        const totalMinutes = entries.reduce((sum, entry) => sum + (entry.durationMin || entry.minutes || 0), 0);
         const session = {
           date: new Date().toISOString(),
           type: 'cardio',
@@ -6002,6 +6438,7 @@ return (
                 id={activeCardio}
                 onUpdateSessionLogs={updateSessionLogs}
                 sessionLogs={activeSessionToday?.logsByExercise?.[activeCardio] || []}
+                history={history[activeCardio] || []}
                 onClose={() => setActiveCardio(null)}
               />
             )}
