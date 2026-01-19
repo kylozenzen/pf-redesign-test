@@ -259,14 +259,14 @@ body.app-shell {
   font-size: 18px;
   box-shadow: 0 12px 28px var(--accent-soft);
   transition: transform 160ms var(--ease-standard),
-              box-shadow 220ms var(--ease-standard),
-              border-color 220ms var(--ease-standard),
-              background-color 220ms var(--ease-standard),
-              color 220ms var(--ease-standard);
+              box-shadow 200ms var(--ease-standard),
+              border-color 200ms var(--ease-standard),
+              background-color 200ms var(--ease-standard),
+              color 200ms var(--ease-standard);
 }
 
 .home-primary-button:active {
-  transform: scale(0.98);
+  transform: scale(0.97);
 }
 
 .home-secondary-button {
@@ -279,10 +279,14 @@ body.app-shell {
   font-size: 13px;
   color: var(--text);
   transition: transform 160ms var(--ease-standard),
-              box-shadow 220ms var(--ease-standard),
-              border-color 220ms var(--ease-standard),
-              background-color 220ms var(--ease-standard),
-              color 220ms var(--ease-standard);
+              box-shadow 200ms var(--ease-standard),
+              border-color 200ms var(--ease-standard),
+              background-color 200ms var(--ease-standard),
+              color 200ms var(--ease-standard);
+}
+
+.home-secondary-button:active {
+  transform: scale(0.97);
 }
 
 .home-quick-generate {
@@ -306,10 +310,14 @@ body.app-shell {
   color: var(--text);
   box-shadow: 0 12px 24px var(--accent-soft);
   transition: transform 160ms var(--ease-standard),
-              box-shadow 220ms var(--ease-standard),
-              border-color 220ms var(--ease-standard),
-              background-color 220ms var(--ease-standard),
-              color 220ms var(--ease-standard);
+              box-shadow 200ms var(--ease-standard),
+              border-color 200ms var(--ease-standard),
+              background-color 200ms var(--ease-standard),
+              color 200ms var(--ease-standard);
+}
+
+.quick-chip:active {
+  transform: scale(0.97);
 }
 
 .quote-block {
@@ -355,6 +363,15 @@ body.app-shell {
   font-weight: 700;
   color: var(--text);
   margin-top: 8px;
+  transition: transform 160ms var(--ease-standard),
+              box-shadow 200ms var(--ease-standard),
+              border-color 200ms var(--ease-standard),
+              background-color 200ms var(--ease-standard),
+              color 200ms var(--ease-standard);
+}
+
+.home-rest-action:active {
+  transform: scale(0.97);
 }
 
 .browse-library-button {
@@ -656,10 +673,14 @@ textarea::placeholder {
   background: var(--surface);
   color: var(--text);
   transition: transform 160ms var(--ease-standard),
-              box-shadow 220ms var(--ease-standard),
-              border-color 220ms var(--ease-standard),
-              background-color 220ms var(--ease-standard),
-              color 220ms var(--ease-standard);
+              box-shadow 200ms var(--ease-standard),
+              border-color 200ms var(--ease-standard),
+              background-color 200ms var(--ease-standard),
+              color 200ms var(--ease-standard);
+}
+
+.accent-pill:active {
+  transform: scale(0.97);
 }
 
 .accent-pill.active {
@@ -805,14 +826,14 @@ textarea::placeholder {
   cursor: pointer;
   width: 100%;
   transition: transform 160ms var(--ease-standard),
-              box-shadow 220ms var(--ease-standard),
-              border-color 220ms var(--ease-standard),
-              background-color 220ms var(--ease-standard),
-              color 220ms var(--ease-standard);
+              box-shadow 200ms var(--ease-standard),
+              border-color 200ms var(--ease-standard),
+              background-color 200ms var(--ease-standard),
+              color 200ms var(--ease-standard);
 }
 
 .accent-button:active {
-  transform: translateY(1px);
+  transform: scale(0.97);
 }
 
 .accent-button:disabled {
@@ -830,14 +851,14 @@ textarea::placeholder {
   border-radius: var(--radius-control);
   cursor: pointer;
   transition: transform 160ms var(--ease-standard),
-              box-shadow 220ms var(--ease-standard),
-              border-color 220ms var(--ease-standard),
-              background-color 220ms var(--ease-standard),
-              color 220ms var(--ease-standard);
+              box-shadow 200ms var(--ease-standard),
+              border-color 200ms var(--ease-standard),
+              background-color 200ms var(--ease-standard),
+              color 200ms var(--ease-standard);
 }
 
 .ghost-button:active {
-  transform: translateY(1px);
+  transform: scale(0.97);
 }
 
 .form-tile {
@@ -1038,6 +1059,15 @@ textarea::placeholder {
   border: 1px solid var(--border);
   padding: 8px 12px;
   border-radius: 999px;
+  transition: transform 160ms var(--ease-standard),
+              box-shadow 200ms var(--ease-standard),
+              border-color 200ms var(--ease-standard),
+              background-color 200ms var(--ease-standard),
+              color 200ms var(--ease-standard);
+}
+
+.session-cancel-button:active {
+  transform: scale(0.97);
 }
 
 .workout-shell .workout-chip {
@@ -1077,10 +1107,14 @@ textarea::placeholder {
   font-weight: 700;
   letter-spacing: 0.04em;
   transition: transform 160ms var(--ease-standard),
-              box-shadow 220ms var(--ease-standard),
-              border-color 220ms var(--ease-standard),
-              background-color 220ms var(--ease-standard),
-              color 220ms var(--ease-standard);
+              box-shadow 200ms var(--ease-standard),
+              border-color 200ms var(--ease-standard),
+              background-color 200ms var(--ease-standard),
+              color 200ms var(--ease-standard);
+}
+
+.filter-chip:active {
+  transform: scale(0.97);
 }
 
 .filter-chip.active {
@@ -1199,21 +1233,36 @@ textarea::placeholder {
   border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border));
   box-shadow: var(--shadow-card);
   transition: transform 160ms var(--ease-standard),
-              box-shadow 220ms var(--ease-standard),
-              border-color 220ms var(--ease-standard),
-              background-color 220ms var(--ease-standard),
-              color 220ms var(--ease-standard);
+              box-shadow 200ms var(--ease-standard),
+              border-color 200ms var(--ease-standard),
+              background-color 200ms var(--ease-standard),
+              color 200ms var(--ease-standard);
 }
 
 
 .quick-generator-button:active {
-  transform: scale(0.98);
+  transform: scale(0.97);
 }
 
 @media (hover: hover) and (pointer: fine) {
   .home-primary-button:hover {
     background: var(--accent-hover);
     box-shadow: 0 16px 32px var(--accent-soft);
+  }
+
+  .home-secondary-button:hover {
+    border-color: color-mix(in srgb, var(--accent) 30%, var(--border));
+    box-shadow: 0 10px 22px rgba(15, 23, 42, 0.08);
+  }
+
+  .home-rest-action:hover {
+    border-color: color-mix(in srgb, var(--accent) 28%, var(--border));
+    box-shadow: 0 8px 18px rgba(15, 23, 42, 0.08);
+  }
+
+  .quick-chip:hover {
+    border-color: color-mix(in srgb, var(--accent) 30%, var(--border));
+    box-shadow: 0 16px 30px var(--accent-soft);
   }
 
   .bg-purple-600:hover {
@@ -1227,11 +1276,33 @@ textarea::placeholder {
 
   .accent-button:hover {
     background: var(--accent-hover);
+    box-shadow: 0 16px 32px var(--accent-soft);
   }
 
   .ghost-button:hover {
     border-color: var(--accent);
     color: var(--accent);
+    box-shadow: 0 8px 18px rgba(15, 23, 42, 0.08);
+  }
+
+  .accent-pill:hover:not(.active) {
+    border-color: color-mix(in srgb, var(--accent) 30%, var(--border));
+    box-shadow: 0 8px 18px rgba(15, 23, 42, 0.08);
+  }
+
+  .filter-chip:hover:not(.active) {
+    border-color: color-mix(in srgb, var(--accent) 30%, var(--border));
+    box-shadow: 0 8px 18px rgba(15, 23, 42, 0.08);
+  }
+
+  .session-action-button:hover {
+    border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+    box-shadow: 0 8px 18px var(--accent-soft);
+  }
+
+  .session-cancel-button:hover {
+    border-color: color-mix(in srgb, var(--accent) 30%, var(--border));
+    box-shadow: 0 8px 18px rgba(15, 23, 42, 0.08);
   }
 
   .quick-generator-button:hover {
@@ -1392,6 +1463,15 @@ body.dark-mode .finish-footer .finish-summary {
   font-weight: 700;
   padding: 6px 10px;
   border-radius: 999px;
+  transition: transform 160ms var(--ease-standard),
+              box-shadow 200ms var(--ease-standard),
+              border-color 200ms var(--ease-standard),
+              background-color 200ms var(--ease-standard),
+              color 200ms var(--ease-standard);
+}
+
+.session-action-button:active {
+  transform: scale(0.97);
 }
 
 .session-remove-button {
