@@ -6354,95 +6354,94 @@ return (
                   </div>
                 </div>
               )}
-              {showAnalytics ? (
-                <div className="h-full flex flex-col bg-gray-50">
-                  <div className="bg-white border-b border-gray-200 p-4 flex items-center gap-3">
-                    <button onClick={() => setShowAnalytics(false)} className="p-2 rounded-full bg-gray-100">
-                      <Icon name="ChevronLeft" className="w-5 h-5 text-gray-700" />
-                    </button>
-                    <div>
-                      <div className="text-xs font-bold text-gray-500 uppercase">Analytics</div>
-                      <div className="text-lg font-black text-gray-900">Progress</div>
+              <div className="page-stack">
+                <div className={`page ${showAnalytics ? 'active' : ''}`} aria-hidden={!showAnalytics}>
+                  <div className="h-full flex flex-col bg-gray-50">
+                    <div className="bg-white border-b border-gray-200 p-4 flex items-center gap-3">
+                      <button onClick={() => setShowAnalytics(false)} className="p-2 rounded-full bg-gray-100">
+                        <Icon name="ChevronLeft" className="w-5 h-5 text-gray-700" />
+                      </button>
+                      <div>
+                        <div className="text-xs font-bold text-gray-500 uppercase">Analytics</div>
+                        <div className="text-lg font-black text-gray-900">Progress</div>
+                      </div>
+                    </div>
+                    <div className="flex-1 overflow-y-auto">
+                      <Progress
+                        profile={profile}
+                        history={history}
+                        strengthScoreObj={strengthScoreObj}
+                        cardioHistory={cardioHistory}
+                      />
                     </div>
                   </div>
-                  <div className="flex-1 overflow-y-auto">
-                    <Progress
-                      profile={profile}
-                      history={history}
-                      strengthScoreObj={strengthScoreObj}
-                      cardioHistory={cardioHistory}
-                    />
-                  </div>
                 </div>
-              ) : (
-                <>
-                  {tab === 'home' && (
-                    <Home
-                      profile={profile}
-                      lastWorkoutLabel={lastWorkoutLabel}
-                      suggestedFocus={suggestedFocus}
-                      onStartWorkout={handleStartWorkout}
-                      onGenerate={(label) => {
-                        const map = {
-                          'Push': 'push',
-                          'Pull': 'pull',
-                          'Legs': 'legs',
-                          'Full Body': 'full',
-                          'Surprise Me': 'surprise'
-                        };
-                        triggerGenerator(map[label] || 'surprise');
-                      }}
-                      homeQuote={homeQuote}
-                      isRestDay={isRestDay}
-                      sessionIntent={sessionIntent}
-                      onLogRestDay={logRestDay}
-                      onUndoRestDay={undoRestDay}
-                      onTriggerGlory={() => setShowGlory(true)}
-                      onLongPressRestDay={() => setShowButDidYouDie(true)}
-                    />
-                  )}
-                  {tab === 'workout' && (
-                    <Workout
-                      profile={profile}
-                      onSelectExercise={handleSelectExercise}
-                      settings={settings}
-                      setSettings={setSettings}
-                      pinnedExercises={pinnedExercises}
-                      setPinnedExercises={setPinnedExercises}
-                      recentExercises={recentExercises}
-                      favoriteExercises={favoriteExercises}
-                      onToggleFavorite={toggleFavoriteExercise}
-                      exerciseUsageCounts={exerciseUsageCounts}
-                      onStartWorkoutFromBuilder={startWorkoutFromBuilder}
-                      activeSession={activeSessionToday}
-                      onFinishSession={finishActiveSession}
-                      onAddExerciseFromSearch={addExerciseFromSearch}
-                      onPushMessage={pushMessage}
-                      onRemoveSessionExercise={removeSessionExercise}
-                      onSwapSessionExercise={swapSessionExercise}
-                      onStartEmptySession={startEmptySession}
-                      isRestDay={isRestDay}
-                      onCancelSession={cancelTodaySession}
-                      sessionIntent={sessionIntent}
-                    />
-                  )}
-                  {tab === 'profile' && (
-                    <ProfileView
-                      settings={settings}
-                      setSettings={setSettings}
-                      themeMode={themeMode}
-                      darkVariant={darkVariant}
-                      setThemeMode={setThemeMode}
-                      setDarkVariant={setDarkVariant}
-                      onViewAnalytics={() => setShowAnalytics(true)}
-                      onExportData={handleExportData}
-                      onImportData={handleImportData}
-                      onResetApp={handleReset}
-                      onResetOnboarding={handleResetOnboarding}
-                    />
-                  )}
-                </>
-              )}
+                <div className={`page ${!showAnalytics && tab === 'home' ? 'active' : ''}`} aria-hidden={showAnalytics || tab !== 'home'}>
+                  <Home
+                    profile={profile}
+                    lastWorkoutLabel={lastWorkoutLabel}
+                    suggestedFocus={suggestedFocus}
+                    onStartWorkout={handleStartWorkout}
+                    onGenerate={(label) => {
+                      const map = {
+                        'Push': 'push',
+                        'Pull': 'pull',
+                        'Legs': 'legs',
+                        'Full Body': 'full',
+                        'Surprise Me': 'surprise'
+                      };
+                      triggerGenerator(map[label] || 'surprise');
+                    }}
+                    homeQuote={homeQuote}
+                    isRestDay={isRestDay}
+                    sessionIntent={sessionIntent}
+                    onLogRestDay={logRestDay}
+                    onUndoRestDay={undoRestDay}
+                    onTriggerGlory={() => setShowGlory(true)}
+                    onLongPressRestDay={() => setShowButDidYouDie(true)}
+                  />
+                </div>
+                <div className={`page ${!showAnalytics && tab === 'workout' ? 'active' : ''}`} aria-hidden={showAnalytics || tab !== 'workout'}>
+                  <Workout
+                    profile={profile}
+                    onSelectExercise={handleSelectExercise}
+                    settings={settings}
+                    setSettings={setSettings}
+                    pinnedExercises={pinnedExercises}
+                    setPinnedExercises={setPinnedExercises}
+                    recentExercises={recentExercises}
+                    favoriteExercises={favoriteExercises}
+                    onToggleFavorite={toggleFavoriteExercise}
+                    exerciseUsageCounts={exerciseUsageCounts}
+                    onStartWorkoutFromBuilder={startWorkoutFromBuilder}
+                    activeSession={activeSessionToday}
+                    onFinishSession={finishActiveSession}
+                    onAddExerciseFromSearch={addExerciseFromSearch}
+                    onPushMessage={pushMessage}
+                    onRemoveSessionExercise={removeSessionExercise}
+                    onSwapSessionExercise={swapSessionExercise}
+                    onStartEmptySession={startEmptySession}
+                    isRestDay={isRestDay}
+                    onCancelSession={cancelTodaySession}
+                    sessionIntent={sessionIntent}
+                  />
+                </div>
+                <div className={`page ${!showAnalytics && tab === 'profile' ? 'active' : ''}`} aria-hidden={showAnalytics || tab !== 'profile'}>
+                  <ProfileView
+                    settings={settings}
+                    setSettings={setSettings}
+                    themeMode={themeMode}
+                    darkVariant={darkVariant}
+                    setThemeMode={setThemeMode}
+                    setDarkVariant={setDarkVariant}
+                    onViewAnalytics={() => setShowAnalytics(true)}
+                    onExportData={handleExportData}
+                    onImportData={handleImportData}
+                    onResetApp={handleReset}
+                    onResetOnboarding={handleResetOnboarding}
+                  />
+                </div>
+              </div>
             </div>
 
             {!showAnalytics && <TabBar currentTab={tab} setTab={setTab} onWorkoutTripleTap={() => setShowSpartan(true)} />}

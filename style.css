@@ -172,6 +172,27 @@ body.app-shell {
   height: 100dvh;
 }
 
+.page-stack {
+  position: relative;
+  height: 100%;
+}
+
+.page {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 0.28s var(--ease-standard),
+              transform 0.28s var(--ease-standard);
+  pointer-events: none;
+}
+
+.page.active {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
 .home-screen {
   overflow: hidden;
 }
