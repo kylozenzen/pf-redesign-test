@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Outfit:wght@500;600;700;800;900&display=swap');
+
 * {
   box-sizing: border-box;
 }
@@ -29,6 +31,7 @@
   --radius-small: 14px;
   --shadow-card: 0 12px 28px rgba(15, 23, 42, 0.08);
   --shadow-card-strong: 0 18px 36px rgba(15, 23, 42, 0.14);
+  --font-display: 'Outfit', 'Inter', sans-serif;
 }
 
 body {
@@ -41,6 +44,14 @@ body {
   overscroll-behavior: none;
   transition: background-color 0.25s ease, color 0.25s ease;
   line-height: 1.5;
+}
+
+.stat-number {
+  font-family: var(--font-display);
+  font-size: 1.4em;
+  font-weight: 800;
+  letter-spacing: -0.015em;
+  line-height: 1.1;
 }
 
 body.dark-mode {
@@ -211,11 +222,12 @@ body.app-shell {
 }
 
 .home-section-title {
-  font-size: 12px;
-  font-weight: 800;
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 700;
   text-transform: uppercase;
   color: var(--muted);
-  letter-spacing: 0.14em;
+  letter-spacing: 0.16em;
 }
 
 .home-section-title--row {
@@ -230,8 +242,9 @@ body.app-shell {
 }
 
 .home-section-subtitle {
-  font-size: 15px;
-  font-weight: 700;
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 800;
   color: var(--text);
 }
 
@@ -241,8 +254,9 @@ body.app-shell {
   border-radius: var(--radius-control);
   background: var(--accent);
   color: #fff;
+  font-family: var(--font-display);
   font-weight: 700;
-  font-size: 17px;
+  font-size: 18px;
   box-shadow: 0 12px 28px var(--accent-soft);
   transition: transform 160ms var(--ease-standard),
               box-shadow 220ms var(--ease-standard),
@@ -260,6 +274,7 @@ body.app-shell {
   border-radius: var(--radius-control);
   border: 1px solid var(--border);
   background: var(--surface);
+  font-family: var(--font-display);
   font-weight: 600;
   font-size: 13px;
   color: var(--text);
@@ -285,6 +300,7 @@ body.app-shell {
   border-radius: 999px;
   border: 1px solid var(--border);
   background: var(--surface);
+  font-family: var(--font-display);
   font-size: 16px;
   font-weight: 800;
   color: var(--text);
@@ -316,8 +332,9 @@ body.app-shell {
 }
 
 .home-quote .quote-text {
-  font-size: 19px;
-  font-weight: 700;
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 800;
   color: var(--text);
   line-height: 1.35;
 }
@@ -333,6 +350,7 @@ body.app-shell {
   border-radius: 999px;
   border: 1px dashed var(--border);
   background: var(--surface);
+  font-family: var(--font-display);
   font-size: 13px;
   font-weight: 700;
   color: var(--text);
@@ -341,6 +359,7 @@ body.app-shell {
 
 .browse-library-button {
   margin-top: 8px;
+  font-family: var(--font-display);
   font-size: 12px;
   font-weight: 700;
   color: var(--accent);
@@ -747,7 +766,8 @@ textarea::placeholder {
 
 .onboarding-title {
   text-align: center;
-  font-size: 27px;
+  font-family: var(--font-display);
+  font-size: 28px;
   font-weight: 900;
   margin: 6px 0 4px;
 }
@@ -833,11 +853,12 @@ textarea::placeholder {
 }
 
 .field-label {
+  font-family: var(--font-display);
   font-size: 12px;
   font-weight: 700;
   color: var(--muted);
   text-transform: uppercase;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.06em;
   margin-bottom: 8px;
 }
 
@@ -868,6 +889,7 @@ textarea::placeholder {
   background: var(--surface-2);
   color: var(--muted);
   font-size: 12px;
+  letter-spacing: 0.03em;
 }
 
 .accent-preview .chip {
@@ -876,8 +898,10 @@ textarea::placeholder {
   background: color-mix(in srgb, var(--accent) 16%, transparent);
   color: var(--accent);
   border: 1px solid var(--accent-soft);
+  font-family: var(--font-display);
   font-weight: 700;
   font-size: 12px;
+  letter-spacing: 0.06em;
 }
 
 .accent-preview .btn {
@@ -885,6 +909,7 @@ textarea::placeholder {
   border-radius: var(--radius-control);
   background: var(--accent);
   color: #fff;
+  font-family: var(--font-display);
   font-weight: 800;
   font-size: 12px;
   width: 100%;
@@ -910,6 +935,7 @@ textarea::placeholder {
   border-radius: var(--radius-control);
   background: var(--accent);
   color: #fff;
+  font-family: var(--font-display);
   font-weight: 800;
   font-size: 12px;
   text-align: center;
@@ -922,8 +948,10 @@ textarea::placeholder {
   background: color-mix(in srgb, var(--accent) 16%, transparent);
   color: var(--accent);
   border: 1px solid var(--accent-soft);
+  font-family: var(--font-display);
   font-weight: 700;
   font-size: 12px;
+  letter-spacing: 0.06em;
   text-align: center;
 }
 
@@ -940,6 +968,8 @@ textarea::placeholder {
 .workout-shell .workout-title,
 .workout-shell .workout-heading {
   color: var(--text-strong);
+  font-family: var(--font-display);
+  font-weight: 800;
 }
 
 .workout-shell .workout-muted {
@@ -988,9 +1018,10 @@ textarea::placeholder {
 }
 
 .session-badge {
+  font-family: var(--font-display);
   font-size: 10px;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.12em;
   padding: 4px 8px;
   border-radius: 999px;
   background: color-mix(in srgb, var(--accent) 14%, transparent);
@@ -999,6 +1030,7 @@ textarea::placeholder {
 }
 
 .session-cancel-button {
+  font-family: var(--font-display);
   font-size: 12px;
   font-weight: 700;
   color: var(--muted);
@@ -1040,8 +1072,10 @@ textarea::placeholder {
   border: 1px solid var(--border);
   background: var(--surface-2);
   color: var(--muted);
+  font-family: var(--font-display);
   font-size: 12px;
   font-weight: 700;
+  letter-spacing: 0.04em;
   transition: transform 160ms var(--ease-standard),
               box-shadow 220ms var(--ease-standard),
               border-color 220ms var(--ease-standard),
@@ -1085,6 +1119,8 @@ textarea::placeholder {
 
 .cues-title {
   color: var(--text-strong);
+  font-family: var(--font-display);
+  font-weight: 800;
 }
 
 .cues-muted {
@@ -1155,8 +1191,9 @@ textarea::placeholder {
 .quick-generator-button {
   padding: 14px 22px;
   border-radius: 999px;
+  font-family: var(--font-display);
   font-weight: 700;
-  font-size: 15px;
+  font-size: 16px;
   background: color-mix(in srgb, var(--accent) 10%, var(--surface));
   color: var(--text);
   border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border));
