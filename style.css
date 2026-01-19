@@ -4,8 +4,15 @@
 
 :root {
   --bg: #f4f5f8;
+  --bg-gradient: linear-gradient(180deg,
+    color-mix(in srgb, var(--bg) 96%, white) 0%,
+    var(--bg) 58%,
+    color-mix(in srgb, var(--bg) 96%, black) 100%);
   --surface: #ffffff;
   --surface-2: #eef1f6;
+  --card-gradient: linear-gradient(180deg,
+    color-mix(in srgb, var(--surface) 94%, white) 0%,
+    transparent 65%);
   --text: #0f1117;
   --text-strong: #0b0d14;
   --muted: #6b7280;
@@ -26,7 +33,8 @@
 
 body {
   font-family: 'Inter', sans-serif;
-  background: var(--bg);
+  background-color: var(--bg);
+  background-image: var(--bg-gradient);
   color: var(--text);
   margin: 0;
   -webkit-tap-highlight-color: transparent;
@@ -37,8 +45,15 @@ body {
 
 body.dark-mode {
   --bg: #05070d;
+  --bg-gradient: linear-gradient(180deg,
+    color-mix(in srgb, var(--bg) 92%, white) 0%,
+    var(--bg) 56%,
+    color-mix(in srgb, var(--bg) 94%, black) 100%);
   --surface: #0e121c;
   --surface-2: #161c2b;
+  --card-gradient: linear-gradient(180deg,
+    color-mix(in srgb, var(--surface) 88%, white) 0%,
+    transparent 60%);
   --text: #e7e9f0;
   --text-strong: #f3f4f6;
   --muted: #9ca3af;
@@ -72,7 +87,7 @@ body.dark-mode.theme-blue {
 
 .bg-white {
   background: var(--surface) !important;
-  background: var(--surface-grad) !important;
+  background: var(--card-gradient), var(--surface) !important;
   color: var(--text) !important;
   border: 1px solid var(--border) !important;
   border-radius: var(--radius-card);
@@ -178,7 +193,7 @@ body.app-shell {
   padding: 14px;
   border-radius: var(--radius-card);
   background: var(--surface);
-  background: var(--surface-grad);
+  background: var(--card-gradient), var(--surface);
   border: 1px solid var(--border);
   box-shadow: var(--shadow-card), inset 0 1px 0 var(--hairline);
 }
@@ -187,7 +202,7 @@ body.app-shell {
   padding: 16px 18px;
   border-radius: var(--radius-card);
   background: var(--surface);
-  background: var(--surface-grad);
+  background: var(--card-gradient), var(--surface);
   border: 1px solid var(--border);
   box-shadow: var(--shadow-card), inset 0 1px 0 var(--hairline);
   display: flex;
@@ -339,7 +354,7 @@ body.app-shell {
   padding: 18px;
   border-radius: var(--radius-card);
   background: var(--surface);
-  background: var(--surface-grad);
+  background: var(--card-gradient), var(--surface);
   border: 1px solid var(--border);
   box-shadow: var(--shadow-card), inset 0 1px 0 var(--hairline);
 }
@@ -358,7 +373,7 @@ body.app-shell {
 
 .post-workout-card {
   background: var(--surface);
-  background: var(--surface-grad);
+  background: var(--card-gradient), var(--surface);
   border: 1px solid var(--border);
   padding: 24px;
   border-radius: var(--radius-card);
@@ -540,7 +555,7 @@ textarea::placeholder {
   bottom: 120px;
   transform: translate(-50%, 8px);
   background: var(--surface);
-  background: var(--surface-grad);
+  background: var(--card-gradient), var(--surface);
   color: var(--text);
   border: 1px solid var(--border);
   padding: 12px 16px;
@@ -933,7 +948,7 @@ textarea::placeholder {
 
 .workout-shell .workout-card {
   background: var(--surface);
-  background: var(--surface-grad);
+  background: var(--card-gradient), var(--surface);
   border-color: var(--border);
   color: var(--text);
   border-radius: var(--radius-card);
@@ -1043,7 +1058,7 @@ textarea::placeholder {
 
 .quote-card {
   background: var(--surface-2);
-  background: var(--surface-grad);
+  background: var(--card-gradient), var(--surface-2);
   border: 1px solid var(--border);
   box-shadow: var(--shadow-card), inset 0 1px 0 var(--hairline);
   border-radius: var(--radius-card);
@@ -1059,7 +1074,7 @@ textarea::placeholder {
 
 .cues-card {
   background: var(--surface);
-  background: var(--surface-grad);
+  background: var(--card-gradient), var(--surface);
   border: 1px solid var(--border);
   border-left: 3px solid color-mix(in srgb, var(--accent) 45%, transparent);
   border-radius: var(--radius-card);
@@ -1084,7 +1099,7 @@ textarea::placeholder {
   border-radius: var(--radius-card);
   padding: 20px;
   background: var(--surface);
-  background: var(--surface-grad);
+  background: var(--card-gradient), var(--surface);
   box-shadow: var(--shadow-card-strong), inset 0 1px 0 var(--hairline);
 }
 
@@ -1217,7 +1232,7 @@ textarea::placeholder {
   top: 38px;
   right: 8px;
   background: var(--surface);
-  background: var(--surface-grad);
+  background: var(--card-gradient), var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-card);
   box-shadow: var(--shadow-card), inset 0 1px 0 var(--hairline);
@@ -1250,7 +1265,7 @@ body.dark-mode .finish-footer {
   gap: 12px;
   padding: 14px 16px;
   background: var(--surface);
-  background: var(--surface-grad);
+  background: var(--card-gradient), var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-card);
   box-shadow: var(--shadow-card), inset 0 1px 0 var(--hairline);
@@ -1364,7 +1379,7 @@ body.dark-mode .text-gray-400 {
 
 .workout-banner {
   background: var(--surface);
-  background: var(--surface-grad);
+  background: var(--card-gradient), var(--surface);
   border: 1px solid var(--border);
   border-left: 4px solid var(--accent);
   border-radius: var(--radius-card);
