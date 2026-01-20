@@ -2011,6 +2011,7 @@ const Home = ({
   lastWorkoutLabel,
   suggestedFocus,
   dayEntries,
+  lastWorkoutDate,
   onStartWorkout,
   onGenerate,
   homeQuote,
@@ -2103,6 +2104,49 @@ const Home = ({
     return { days, total, maxCount };
   }, [dayEntries]);
 
+  const daysSinceLastWorkout = useMemo(() => {
+    if (!lastWorkoutDate) return null;
+    const diffMs = new Date() - lastWorkoutDate;
+    return Math.floor(diffMs / 86400000);
+  }, [lastWorkoutDate]);
+
+  const hasWorkoutLoggedInLast24Hours = useMemo(() => {
+    if (!lastWorkoutDate) return false;
+    const diffMs = new Date() - lastWorkoutDate;
+    return diffMs <= 86400000;
+  }, [lastWorkoutDate]);
+
+  // Reduce guilt: hide tracker after long gaps to ease re-entry.
+  const shouldHideTracker = daysSinceLastWorkout !== null
+    && daysSinceLastWorkout > 7
+    && !hasWorkoutLoggedInLast24Hours;
+
+  const welcomeBackMessage = useMemo(() => {
+    const welcomeBackMessages = [
+      "Good to see you. Let’s keep it simple today.",
+      "Welcome back — start wherever you are.",
+      "You’re here. That’s the hardest part.",
+      "Let’s ease in. One step is enough.",
+      "Ready when you are. No pressure.",
+      "Today can be light, strong, or somewhere in between.",
+      "Small starts still count.",
+      "You haven’t lost your progress — let’s build from here.",
+      "No expectations. Just movement.",
+      "Your comeback rep starts whenever you want.",
+      "Welcome — choose what feels doable today.",
+      "You’re in the right place. Let’s get moving.",
+      "Any pace works today.",
+      "Let’s take today one set at a time.",
+      "Your routine is waiting whenever you’re ready.",
+      "Today doesn’t need to be perfect, just started.",
+      "You showed up — everything else is optional.",
+      "Start soft, start slow, start strong. Your choice.",
+      "Let’s make today feel like a win, big or small.",
+      "This is a good place to begin again."
+    ];
+    return welcomeBackMessages[Math.floor(Math.random() * welcomeBackMessages.length)];
+  }, []);
+
   return (
     <div className="flex flex-col h-full bg-gray-50 home-screen">
       <div className="bg-white border-b border-gray-100 sticky top-0 z-20" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
@@ -2139,28 +2183,36 @@ const Home = ({
               <div className="text-xs uppercase text-gray-400 font-bold">Last workout</div>
               <div className="text-lg font-black text-gray-900">{lastWorkoutLabel || 'No logs yet'}</div>
             </div>
+          </div>
+          <div className="home-card-row home-card-row--single">
             <div className="home-mini-card">
-              <div className="weekly-activity-header">
-                <div className="weekly-activity-title">This Week</div>
-                <div className="weekly-activity-total">{weekSummary.total} workouts</div>
-              </div>
-              <div className="weekly-activity-bars">
-                {weekSummary.days.map(day => (
-                  <div key={day.key} className="weekly-activity-bar-column">
-                    <div className="weekly-activity-bar-track">
-                      <div
-                        className="weekly-activity-bar"
-                        style={{
-                          height: `${weekSummary.maxCount === 0 ? 6 : Math.max(6, Math.round((day.count / weekSummary.maxCount) * 48))}px`
-                        }}
-                      />
-                    </div>
-                    <div className="weekly-activity-day-label">{day.label}</div>
+              {shouldHideTracker ? (
+                <div className="weekly-activity-message">{welcomeBackMessage}</div>
+              ) : (
+                <>
+                  <div className="weekly-activity-header">
+                    <div className="weekly-activity-title">This Week</div>
+                    <div className="weekly-activity-total">{weekSummary.total} workouts</div>
                   </div>
-                ))}
-              </div>
-              {suggestedFocus && (
-                <div className="weekly-activity-focus">Suggested focus: {suggestedFocus}</div>
+                  <div className="weekly-activity-bars">
+                    {weekSummary.days.map(day => (
+                      <div key={day.key} className="weekly-activity-bar-column">
+                        <div className="weekly-activity-bar-track">
+                          <div
+                            className="weekly-activity-bar"
+                            style={{
+                              height: `${weekSummary.maxCount === 0 ? 6 : Math.max(6, Math.round((day.count / weekSummary.maxCount) * 48))}px`
+                            }}
+                          />
+                        </div>
+                        <div className="weekly-activity-day-label">{day.label}</div>
+                      </div>
+                    ))}
+                  </div>
+                  {suggestedFocus && (
+                    <div className="weekly-activity-focus">Suggested focus: {suggestedFocus}</div>
+                  )}
+                </>
               )}
             </div>
           </div>
@@ -6471,6 +6523,7 @@ return (
                     lastWorkoutLabel={lastWorkoutLabel}
                     suggestedFocus={suggestedFocus}
                     dayEntries={dayEntries}
+                    lastWorkoutDate={lastWorkoutDate}
                     onStartWorkout={handleStartWorkout}
                     onGenerate={(label) => {
                       const map = {
