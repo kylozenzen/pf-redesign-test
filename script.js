@@ -2178,12 +2178,6 @@ const Home = ({
 
       <div className="flex-1 p-4 pb-6 home-content">
         <div className="home-stack">
-          <div className="home-card-row">
-            <div className="home-mini-card">
-              <div className="text-xs uppercase text-gray-400 font-bold">Last workout</div>
-              <div className="text-lg font-black text-gray-900">{lastWorkoutLabel || 'No logs yet'}</div>
-            </div>
-          </div>
           <div className="home-card-row home-card-row--single">
             <div className="home-mini-card">
               {shouldHideTracker ? (

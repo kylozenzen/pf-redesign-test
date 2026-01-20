@@ -550,6 +550,10 @@ body.app-shell {
               border-color 200ms var(--ease-standard),
               background-color 200ms var(--ease-standard),
               color 200ms var(--ease-standard);
+  user-select: none;
+  -webkit-user-select: none;
+  -ms-user-select: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .home-rest-action:active {
