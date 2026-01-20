@@ -286,26 +286,46 @@ const { useState, useEffect, useMemo, useRef, useCallback } = React;
       return pool[Math.floor(Math.random() * pool.length)];
     };
 
-    const resolveMuscleGroup = (eq) => {
-      const target = (eq?.target || '').toLowerCase();
-      if (target.includes('chest') || target.includes('pec')) return 'Chest';
-      if (target.includes('back') || target.includes('lat')) return 'Back';
-      if (target.includes('leg') || target.includes('quad') || target.includes('hamstring') || target.includes('glute') || target.includes('calf') || target.includes('thigh')) return 'Legs';
-      if (target.includes('shoulder') || target.includes('delt')) return 'Shoulders';
-      if (target.includes('bicep') || target.includes('tricep') || target.includes('arm') || target.includes('forearm')) return 'Arms';
-      if (target.includes('core') || target.includes('ab')) return 'Core';
-      return 'Other';
-    };
-
-    const resolveMuscleKey = (label = '') => {
-      const value = label.toLowerCase();
+    const normalizeMuscleGroup = (raw) => {
+      if (!raw) return 'other';
+      const type = typeof raw === 'string' ? null : raw?.type;
+      if (type === 'cardio') return 'cardio';
+      const value = typeof raw === 'string'
+        ? raw.toLowerCase()
+        : `${raw?.target || raw?.muscles || raw?.muscleGroup || raw?.name || ''}`.toLowerCase();
+      if (!value) return 'other';
+      if (value.includes('full body') || value.includes('fullbody')) return 'fullbody';
       if (value.includes('chest') || value.includes('pec')) return 'chest';
-      if (value.includes('back') || value.includes('lat')) return 'back';
+      if (value.includes('back') || value.includes('lat') || value.includes('trap')) return 'back';
       if (value.includes('leg') || value.includes('quad') || value.includes('hamstring') || value.includes('glute') || value.includes('calf') || value.includes('thigh')) return 'legs';
       if (value.includes('shoulder') || value.includes('delt')) return 'shoulders';
-      if (value.includes('bicep') || value.includes('tricep') || value.includes('arm') || value.includes('forearm')) return 'arms';
-      if (value.includes('core') || value.includes('ab')) return 'core';
-      return null;
+      if (value.includes('bicep') || value.includes('tricep') || value.includes('arm') || value.includes('forearm') || value.includes('brach')) return 'arms';
+      if (value.includes('core') || value.includes('ab') || value.includes('oblique')) return 'core';
+      return 'other';
+    };
+
+    const resolveMuscleGroup = (raw) => {
+      const normalized = normalizeMuscleGroup(raw);
+      switch (normalized) {
+        case 'chest':
+          return 'Chest';
+        case 'back':
+          return 'Back';
+        case 'legs':
+          return 'Legs';
+        case 'core':
+          return 'Core';
+        case 'arms':
+          return 'Arms';
+        case 'shoulders':
+          return 'Shoulders';
+        case 'cardio':
+          return 'Cardio';
+        case 'fullbody':
+          return 'Full Body';
+        default:
+          return 'Other';
+      }
     };
 
     const buildMuscleDistribution = (history = {}, rangeDays = 30) => {
@@ -327,12 +347,8 @@ const { useState, useEffect, useMemo, useRef, useCallback } = React;
           if (!session?.date) return;
           const time = new Date(session.date).getTime();
           if (!Number.isFinite(time) || time < cutoff.getTime()) return;
-          const baseGroup = session.muscleGroup || resolveMuscleGroup(eq);
-          const fallbackLabel = baseGroup === 'Other'
-            ? (session.muscleGroup || eq?.target || eq?.muscles || '')
-            : baseGroup;
-          const key = resolveMuscleKey(fallbackLabel);
-          if (key && counts[key] !== undefined) counts[key] += 1;
+          const group = normalizeMuscleGroup(session.muscleGroup || eq);
+          if (group && counts[group] !== undefined) counts[group] += 1;
         });
       });
 
@@ -363,13 +379,16 @@ const { useState, useEffect, useMemo, useRef, useCallback } = React;
       shoulders: {
         tint: 'var(--tint-shoulders)',
         icon: <path d="M12 3v4M12 17v4M3 12h4M17 12h4M7 7l2 2M15 7l-2 2M7 17l2-2M15 17l-2-2" />
+      },
+      neutral: {
+        tint: 'color-mix(in srgb, var(--muted) 35%, var(--surface))',
+        icon: <path d="M4 12h16M12 4v16" />
       }
     };
 
     const renderMuscleBadge = (muscleGroup) => {
-      const key = resolveMuscleKey(muscleGroup) || `${muscleGroup || ''}`.toLowerCase();
-      const config = MUSCLE_BADGE_CONFIG[key];
-      if (!config) return null;
+      const key = normalizeMuscleGroup(muscleGroup);
+      const config = MUSCLE_BADGE_CONFIG[key] || MUSCLE_BADGE_CONFIG.neutral;
       return (
         <span className="muscle-badge" style={{ '--badge-tint': config.tint }}>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -381,12 +400,12 @@ const { useState, useEffect, useMemo, useRef, useCallback } = React;
 
     const getLastWorkedDateForGroup = (muscleGroup, history = {}, exerciseMeta = {}) => {
       if (!muscleGroup) return null;
-      const target = `${muscleGroup}`.toLowerCase();
+      const target = normalizeMuscleGroup(muscleGroup);
       let latest = null;
       Object.entries(exerciseMeta || {}).forEach(([id, meta]) => {
         if (!meta || meta.type === 'cardio' || meta.type === 'easterEgg') return;
-        const group = resolveMuscleGroup(meta);
-        if (!group || group.toLowerCase() !== target) return;
+        const group = normalizeMuscleGroup(meta);
+        if (!group || group !== target) return;
         safeArray(history?.[id]).forEach(session => {
           if (!session?.date) return;
           const time = new Date(session.date).getTime();
@@ -412,6 +431,46 @@ const { useState, useEffect, useMemo, useRef, useCallback } = React;
       }
       const dateStr = lastDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
       return `Last worked • ${dateStr}`;
+    };
+
+    const getLastUsedDateForExercise = (exerciseId, history = {}, cardioHistory = {}) => {
+      if (!exerciseId) return null;
+      let latest = null;
+      if (exerciseId.startsWith('cardio_')) {
+        const cardioType = exerciseId.replace('cardio_', '');
+        safeArray(cardioHistory?.[cardioType]).forEach(session => {
+          if (!session?.date) return;
+          const time = new Date(session.date).getTime();
+          if (!Number.isFinite(time)) return;
+          if (!latest || time > latest.getTime()) {
+            latest = new Date(time);
+          }
+        });
+      }
+      safeArray(history?.[exerciseId]).forEach(session => {
+        if (!session?.date) return;
+        const time = new Date(session.date).getTime();
+        if (!Number.isFinite(time)) return;
+        if (!latest || time > latest.getTime()) {
+          latest = new Date(time);
+        }
+      });
+      return latest;
+    };
+
+    const formatLastUsedLabel = (lastDate, now = new Date()) => {
+      if (!lastDate) {
+        return 'Not used yet';
+      }
+      const msPerDay = 24 * 60 * 60 * 1000;
+      const nowDate = now instanceof Date ? now : new Date(now);
+      const diffDays = Math.floor((nowDate - lastDate) / msPerDay);
+      if (diffDays <= 7) {
+        const weekday = lastDate.toLocaleDateString(undefined, { weekday: 'short' });
+        return `Last used • ${weekday}`;
+      }
+      const dateStr = lastDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+      return `Last used • ${dateStr}`;
     };
 
     const getLastWorkoutDate = (history = {}, cardioHistory = {}) => {
@@ -2512,7 +2571,6 @@ const Home = ({
   suggestedFocus,
   dayEntries,
   lastWorkoutDate,
-  history,
   onStartWorkout,
   onGenerate,
   homeQuote,
@@ -2722,15 +2780,12 @@ const Home = ({
           </div>
           <div className="home-card-row no-scrollbar">
             {muscleGroups.map(group => {
-              const lastDate = getLastWorkedDateForGroup(group.label, history, EQUIPMENT_DB);
-              const label = formatLastWorkedLabel(lastDate);
               return (
                 <div key={group.key} className="home-mini-card home-muscle-card">
                   <div className="home-muscle-card-title">
                     {renderMuscleBadge(group.label)}
                     <span>{group.label}</span>
                   </div>
-                  <div className="muscle-card-subtext">{label}</div>
                 </div>
               );
             })}
@@ -2793,7 +2848,7 @@ const Home = ({
   );
 };
 
-const Workout = ({ profile, onSelectExercise, settings, setSettings, pinnedExercises, setPinnedExercises, recentExercises, favoriteExercises, onToggleFavorite, exerciseUsageCounts, activeSession, onFinishSession, onStartWorkoutFromBuilder, onAddExerciseFromSearch, onPushMessage, onRemoveSessionExercise, onSwapSessionExercise, onStartEmptySession, isRestDay, onCancelSession, sessionIntent }) => {
+const Workout = ({ profile, history, cardioHistory, onSelectExercise, settings, setSettings, pinnedExercises, setPinnedExercises, recentExercises, favoriteExercises, onToggleFavorite, exerciseUsageCounts, activeSession, onFinishSession, onStartWorkoutFromBuilder, onAddExerciseFromSearch, onPushMessage, onRemoveSessionExercise, onSwapSessionExercise, onStartEmptySession, isRestDay, onCancelSession, sessionIntent }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const debouncedSearchQuery = useDebounce(searchQuery, 200);
   const [libraryVisible, setLibraryVisible] = useState(settings.showAllExercises);
@@ -2929,42 +2984,13 @@ const Workout = ({ profile, onSelectExercise, settings, setSettings, pinnedExerc
     return '🏋️‍♂️';
   };
 
-  const MUSCLE_GROUP_CATEGORY_MAP = {
-    chest: 'chest',
-    pecs: 'chest',
-    'upper chest': 'chest',
-    back: 'back',
-    'upper back': 'back',
-    'lower back': 'back',
-    lats: 'back',
-    traps: 'back',
-    legs: 'legs',
-    quads: 'legs',
-    quadriceps: 'legs',
-    hamstrings: 'legs',
-    glutes: 'legs',
-    calves: 'legs',
-    'inner thighs': 'legs',
-    adductors: 'legs',
-    core: 'core',
-    abs: 'core',
-    obliques: 'core',
-    biceps: 'arms',
-    triceps: 'arms',
-    forearms: 'arms',
-    brachialis: 'arms',
-    shoulders: 'shoulders',
-    delts: 'shoulders',
-    'front delts': 'shoulders',
-    'side delts': 'shoulders'
-  };
-
   const resolveCategoryClass = (label = '') => {
-    if (!label) return '';
-    const primary = `${label}`.split(',')[0].trim().toLowerCase();
-    if (!primary) return '';
-    const normalizedCategory = MUSCLE_GROUP_CATEGORY_MAP[primary] || null;
-    return normalizedCategory ? `category-${normalizedCategory}` : '';
+    const normalizedCategory = normalizeMuscleGroup(label);
+    if (!normalizedCategory) return '';
+    if (['chest', 'back', 'legs', 'core', 'arms', 'shoulders'].includes(normalizedCategory)) {
+      return `category-${normalizedCategory}`;
+    }
+    return '';
   };
 
   const renderExerciseRow = (id, actionLabel = 'Add', onAction) => {
@@ -2973,18 +2999,22 @@ const Workout = ({ profile, onSelectExercise, settings, setSettings, pinnedExerc
     const isComingSoon = !!eq.comingSoon;
     const allowAdd = hasTodayWorkout && !isRestDay && !isComingSoon;
     const categoryClass = resolveCategoryClass(eq.target || eq.muscles || '');
+    const badgeGroup = normalizeMuscleGroup(eq);
+    const lastUsedDate = getLastUsedDateForExercise(id, history, cardioHistory);
+    const lastUsedLabel = formatLastUsedLabel(lastUsedDate);
     return (
       <div
         key={id}
-        className={`w-full p-3 rounded-xl border border-gray-200 bg-white flex items-center justify-between ${categoryClass}`}
+        className={`exercise-library-card w-full p-3 rounded-xl border border-gray-200 bg-white flex items-center justify-between ${categoryClass}`}
       >
         <div className="flex items-center gap-3 text-left">
-          <div className="w-10 h-10 rounded-lg workout-chip flex items-center justify-center text-lg">
-            {getExerciseIcon(eq)}
+          <div className="exercise-badge-wrapper">
+            {renderMuscleBadge(badgeGroup)}
           </div>
           <div>
             <div className="font-bold workout-heading text-sm leading-tight">{eq.name}</div>
             <div className="text-xs workout-muted">{eq.type === 'cardio' ? 'Cardio' : eq.target}</div>
+            <div className="exercise-last-used">{lastUsedLabel}</div>
             {isComingSoon && (
               <div className="text-[11px] text-gray-400 font-semibold">Coming Soon</div>
             )}
@@ -3025,17 +3055,22 @@ const Workout = ({ profile, onSelectExercise, settings, setSettings, pinnedExerc
     const eq = EQUIPMENT_DB[id];
     if (!eq) return null;
     const pinned = pinnedExercises.includes(id);
-    const typeIcon = getExerciseIcon(eq);
     const isComingSoon = !!eq.comingSoon;
     const allowAdd = hasTodayWorkout && !isRestDay && !isComingSoon;
     const categoryClass = resolveCategoryClass(eq.target || eq.muscles || '');
+    const badgeGroup = normalizeMuscleGroup(eq);
+    const lastUsedDate = getLastUsedDateForExercise(id, history, cardioHistory);
+    const lastUsedLabel = formatLastUsedLabel(lastUsedDate);
     return (
-      <div key={id} className={`tile text-left ${categoryClass}`}>
+      <div key={id} className={`tile text-left exercise-library-card ${categoryClass}`}>
         <div className="flex items-center justify-between mb-1">
-          <div className="text-lg">{typeIcon}</div>
+          <div className="exercise-badge-wrapper">
+            {renderMuscleBadge(badgeGroup)}
+          </div>
           <span className="text-[11px] workout-muted">{eq.type === 'cardio' ? 'Cardio' : eq.target}</span>
         </div>
         <div className="font-bold workout-heading text-sm leading-tight">{eq.name}</div>
+        <div className="exercise-last-used">{lastUsedLabel}</div>
         {isComingSoon && (
           <div className="text-[11px] text-gray-400 font-semibold mt-1">Coming Soon</div>
         )}
@@ -7305,7 +7340,6 @@ return (
                     suggestedFocus={suggestedFocus}
                     dayEntries={effectiveDayEntries}
                     lastWorkoutDate={lastWorkoutDate}
-                    history={effectiveHistory}
                     onStartWorkout={handleStartWorkout}
                     onGenerate={(label) => {
                       const map = {
@@ -7329,6 +7363,8 @@ return (
                 <div className={`page ${!showAnalytics && !showPatterns && !showMuscleMap && tab === 'workout' ? 'active' : ''}`} aria-hidden={showAnalytics || showPatterns || showMuscleMap || tab !== 'workout'}>
                   <Workout
                     profile={profile}
+                    history={effectiveHistory}
+                    cardioHistory={effectiveCardioHistory}
                     onSelectExercise={handleSelectExercise}
                     settings={settings}
                     setSettings={setSettings}

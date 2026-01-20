@@ -587,6 +587,29 @@ body.app-shell {
   stroke: var(--text);
 }
 
+.exercise-badge-wrapper {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--surface) 94%, var(--border));
+  border: 1px solid var(--border);
+}
+
+.exercise-last-used {
+  margin-top: 3px;
+  font-size: 11px;
+  color: var(--muted);
+  letter-spacing: 0.01em;
+}
+
+.exercise-library-card:active .muscle-badge,
+.tile:active .muscle-badge {
+  transform: scale(0.96);
+}
+
 .weekly-activity-header {
   display: flex;
   align-items: baseline;
