@@ -8,18 +8,18 @@
   --bg: #f4f5f8;
   --bg-gradient: radial-gradient(
     circle at top,
-    rgba(255, 255, 255, 0.16),
+    rgba(255, 255, 255, 0.128),
     transparent 60%
   ),
   linear-gradient(180deg,
-    color-mix(in srgb, var(--bg) 90%, black) 0%,
+    color-mix(in srgb, var(--bg) 92%, black) 0%,
     var(--bg) 40%,
-    color-mix(in srgb, var(--bg) 80%, black) 100%);
+    color-mix(in srgb, var(--bg) 84%, black) 100%);
   --surface: #ffffff;
   --surface-2: #eef1f6;
   --card-gradient: linear-gradient(145deg,
-    rgba(255, 255, 255, 0.12) 0%,
-    rgba(0, 0, 0, 0.35) 100%);
+    rgba(255, 255, 255, 0.096) 0%,
+    rgba(0, 0, 0, 0.28) 100%);
   --text: #0f1117;
   --text-strong: #0b0d14;
   --muted: #6b7280;
@@ -73,18 +73,18 @@ body.dark-mode {
   --bg: #05070d;
   --bg-gradient: radial-gradient(
     circle at top,
-    color-mix(in srgb, #ffffff 16%, transparent),
+    color-mix(in srgb, #ffffff 13%, transparent),
     transparent 60%
   ),
   linear-gradient(180deg,
-    color-mix(in srgb, var(--bg) 82%, black) 0%,
+    color-mix(in srgb, var(--bg) 86%, black) 0%,
     var(--bg) 42%,
-    color-mix(in srgb, var(--bg) 68%, black) 100%);
+    color-mix(in srgb, var(--bg) 74%, black) 100%);
   --surface: #0e121c;
   --surface-2: #161c2b;
   --card-gradient: linear-gradient(145deg,
-    color-mix(in srgb, var(--surface) 78%, white) 0%,
-    color-mix(in srgb, var(--surface) 45%, black) 100%);
+    color-mix(in srgb, var(--surface) 74%, white) 0%,
+    color-mix(in srgb, var(--surface) 55%, black) 100%);
   --text: #e7e9f0;
   --text-strong: #f3f4f6;
   --muted: #9ca3af;
