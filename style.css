@@ -6,15 +6,19 @@
 
 :root {
   --bg: #f4f5f8;
-  --bg-gradient: linear-gradient(180deg,
-    color-mix(in srgb, var(--bg) 96%, white) 0%,
-    var(--bg) 58%,
-    color-mix(in srgb, var(--bg) 96%, black) 100%);
+  --bg-gradient: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--bg) 99%, white) 0%,
+    color-mix(in srgb, var(--bg) 98%, white) 60%,
+    var(--bg) 100%
+  );
   --surface: #ffffff;
   --surface-2: #eef1f6;
-  --card-gradient: linear-gradient(180deg,
-    color-mix(in srgb, var(--surface) 94%, white) 0%,
-    transparent 65%);
+  --card-gradient: linear-gradient(
+    145deg,
+    rgba(255, 255, 255, 0.015) 0%,
+    rgba(15, 23, 42, 0.06) 100%
+  );
   --text: #0f1117;
   --text-strong: #0b0d14;
   --muted: #6b7280;
@@ -38,6 +42,10 @@
   --shadow-card: 0 12px 28px rgba(15, 23, 42, 0.08);
   --shadow-card-strong: 0 18px 36px rgba(15, 23, 42, 0.14);
   --font-display: 'Outfit', 'Inter', sans-serif;
+  --glass-bg: rgba(255, 255, 255, 0.16);
+  --glass-border: rgba(255, 255, 255, 0.26);
+  --glass-shadow: 0 18px 45px rgba(15, 23, 42, 0.45);
+  --glass-blur: 18px;
 }
 
 body {
@@ -62,15 +70,19 @@ body {
 
 body.dark-mode {
   --bg: #05070d;
-  --bg-gradient: linear-gradient(180deg,
-    color-mix(in srgb, var(--bg) 92%, white) 0%,
-    var(--bg) 56%,
-    color-mix(in srgb, var(--bg) 94%, black) 100%);
+  --bg-gradient: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--bg) 96%, white) 0%,
+    var(--bg) 70%,
+    color-mix(in srgb, var(--bg) 92%, black) 100%
+  );
   --surface: #0e121c;
   --surface-2: #161c2b;
-  --card-gradient: linear-gradient(180deg,
-    color-mix(in srgb, var(--surface) 88%, white) 0%,
-    transparent 60%);
+  --card-gradient: linear-gradient(
+    145deg,
+    rgba(255, 255, 255, 0.02) 0%,
+    rgba(0, 0, 0, 0.16) 100%
+  );
   --text: #e7e9f0;
   --text-strong: #f3f4f6;
   --muted: #9ca3af;
@@ -85,6 +97,10 @@ body.dark-mode {
   --tint-core: #38bdf8;
   --tint-arms: #d8b4fe;
   --tint-shoulders: #fde047;
+  --glass-bg: color-mix(in srgb, var(--surface) 72%, transparent);
+  --glass-border: color-mix(in srgb, var(--surface) 55%, white);
+  --glass-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+  --glass-blur: 18px;
 }
 
 body.dark-mode.theme-red {
@@ -266,6 +282,21 @@ body.app-shell {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 14px;
+}
+
+.home-screen > .bg-white {
+  border-radius: 0 0 var(--radius-small) var(--radius-small);
+  box-shadow: none;
+}
+
+.home-stack > .home-card-row .home-mini-card {
+  border-radius: var(--radius-small);
+  box-shadow: none;
+}
+
+.home-stack > .home-section-card:first-of-type {
+  border-radius: var(--radius-small);
+  box-shadow: none;
 }
 
 .home-mini-card {
@@ -476,14 +507,15 @@ body.app-shell {
 }
 
 .post-workout-card {
-  background: var(--surface);
-  background: var(--card-gradient), var(--surface);
-  border: 1px solid var(--border);
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
   padding: 24px;
   border-radius: var(--radius-card);
   max-width: 320px;
   text-align: left;
-  box-shadow: var(--shadow-card-strong), inset 0 1px 0 var(--hairline);
+  box-shadow: var(--glass-shadow);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
 }
 
 .post-workout-celebrate {
@@ -664,16 +696,18 @@ textarea::placeholder {
   bottom: 90px;
   left: 50%;
   transform: translateX(-50%);
-  background: var(--surface);
+  background: var(--glass-bg);
   color: var(--text);
   padding: 10px 14px;
   border-radius: 999px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--glass-border);
   display: flex;
   align-items: center;
   gap: 10px;
   z-index: 1000;
-  box-shadow: var(--shadow-card);
+  box-shadow: var(--glass-shadow);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
 }
 
 .toast {
@@ -681,16 +715,17 @@ textarea::placeholder {
   left: 50%;
   bottom: 120px;
   transform: translate(-50%, 8px);
-  background: var(--surface);
-  background: var(--card-gradient), var(--surface);
+  background: var(--glass-bg);
   color: var(--text);
-  border: 1px solid var(--border);
+  border: 1px solid var(--glass-border);
   padding: 12px 16px;
   border-radius: var(--radius-small);
   font-size: 12px;
   font-weight: 600;
   opacity: 0;
-  box-shadow: var(--shadow-card), inset 0 1px 0 var(--hairline);
+  box-shadow: var(--glass-shadow);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
   animation: toastIn 0.2s ease-out forwards;
   z-index: 1200;
 }
@@ -1430,11 +1465,12 @@ textarea::placeholder {
   position: absolute;
   top: 38px;
   right: 8px;
-  background: var(--surface);
-  background: var(--card-gradient), var(--surface);
-  border: 1px solid var(--border);
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
   border-radius: var(--radius-card);
-  box-shadow: var(--shadow-card), inset 0 1px 0 var(--hairline);
+  box-shadow: var(--glass-shadow);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
   z-index: 20;
   padding: 6px;
   min-width: 140px;
