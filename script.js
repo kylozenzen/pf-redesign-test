@@ -300,14 +300,12 @@ const { useState, useEffect, useMemo, useRef, useCallback } = React;
     const getLastWorkoutDate = (history = {}, cardioHistory = {}) => {
       const dates = [];
       Object.values(history || {}).forEach(arr => {
-        if (!Array.isArray(arr)) return;
-        arr.forEach(s => {
+        safeArray(arr).forEach(s => {
           if (s?.date) dates.push(new Date(s.date));
         });
       });
       Object.values(cardioHistory || {}).forEach(arr => {
-        if (!Array.isArray(arr)) return;
-        arr.forEach(s => {
+        safeArray(arr).forEach(s => {
           if (s?.date) dates.push(new Date(s.date));
         });
       });
@@ -1030,6 +1028,7 @@ const motivationalQuotes = [
 
     // ========== UTILITIES ==========
     const clampTo5 = (n) => Math.max(10, Math.round(n / 5) * 5);
+    const safeArray = (value) => (Array.isArray(value) ? value : []);
 
     // Custom hook for debouncing values
     const useDebounce = (value, delay = 200) => {
@@ -1070,15 +1069,13 @@ const motivationalQuotes = [
       const keys = new Set();
       // Add workout days
       Object.values(history || {}).forEach(arr => {
-        if (!Array.isArray(arr)) return;
-        arr.forEach(s => {
+        safeArray(arr).forEach(s => {
           if (s?.date) keys.add(toDayKey(new Date(s.date)));
         });
       });
       // Add cardio days
       Object.values(cardioHistory || {}).forEach(arr => {
-        if (!Array.isArray(arr)) return;
-        arr.forEach(s => {
+        safeArray(arr).forEach(s => {
           if (s?.date) keys.add(toDayKey(new Date(s.date)));
         });
       });
@@ -1120,16 +1117,14 @@ const motivationalQuotes = [
     const buildDayEntriesFromHistory = (history = {}, cardioHistory = {}, restDays = []) => {
       const entries = {};
       Object.values(history || {}).forEach(arr => {
-        if (!Array.isArray(arr)) return;
-        arr.forEach(s => {
+        safeArray(arr).forEach(s => {
           if (!s?.date) return;
           const key = toDayKey(new Date(s.date));
           entries[key] = entries[key] || { type: 'workout', date: key, exercises: [] };
         });
       });
       Object.values(cardioHistory || {}).forEach(arr => {
-        if (!Array.isArray(arr)) return;
-        arr.forEach(s => {
+        safeArray(arr).forEach(s => {
           if (!s?.date) return;
           const key = toDayKey(new Date(s.date));
           entries[key] = entries[key] || { type: 'workout', date: key, exercises: [] };
@@ -1345,8 +1340,7 @@ const motivationalQuotes = [
       const sessions = [];
       const seen = new Set();
       Object.entries(history || {}).forEach(([equipId, arr]) => {
-        if (!Array.isArray(arr)) return;
-        arr.forEach(session => {
+        safeArray(arr).forEach(session => {
           if (!session?.date) return;
           const key = `${session.date}-${equipId}-${session.type || 'strength'}`;
           if (seen.has(key)) return;
@@ -1355,8 +1349,7 @@ const motivationalQuotes = [
         });
       });
       Object.entries(cardioHistory || {}).forEach(([cardioType, arr]) => {
-        if (!Array.isArray(arr)) return;
-        arr.forEach(session => {
+        safeArray(arr).forEach(session => {
           if (!session?.date) return;
           const key = `${session.date}-${cardioType}-cardio`;
           if (seen.has(key)) return;
@@ -1451,7 +1444,7 @@ const motivationalQuotes = [
           const eq = EQUIPMENT_DB[equipId];
           if (!eq) return;
           const group = resolveMuscleGroup(eq);
-          (Array.isArray(arr) ? arr : []).forEach(s => {
+          safeArray(arr).forEach(s => {
             if (!s?.date) return;
             const key = toDayKey(new Date(s.date));
             if (group === 'Core') coreDays.add(key);
@@ -1461,7 +1454,7 @@ const motivationalQuotes = [
           const eq = EQUIPMENT_DB[equipId];
           if (!eq) return;
           const group = resolveMuscleGroup(eq);
-          (Array.isArray(arr) ? arr : []).forEach(s => {
+          safeArray(arr).forEach(s => {
             if (!s?.date) return;
             const key = toDayKey(new Date(s.date));
             if (group !== 'Core' && coreDays.has(key)) mixedCoreDays.add(key);
@@ -3457,8 +3450,8 @@ const PlateCalculator = ({ targetWeight, barWeight, onClose }) => {
 
       const deriveSessionAnchor = (session) => {
         if (!session) return { weight: null, reps: null };
-        const weights = (Array.isArray(session.sets) ? session.sets : []).map(s => s.weight || 0).filter(Boolean);
-        const reps = (Array.isArray(session.sets) ? session.sets : []).map(s => s.reps || 0).filter(Boolean);
+        const weights = safeArray(session.sets).map(s => s.weight || 0).filter(Boolean);
+        const reps = safeArray(session.sets).map(s => s.reps || 0).filter(Boolean);
         return {
           weight: session.anchorWeight || (weights.length ? Math.max(...weights) : null),
           reps: session.anchorReps || (reps.length ? Math.round(reps.reduce((a, b) => a + b, 0) / reps.length) : null)
@@ -4110,8 +4103,7 @@ const PlateCalculator = ({ targetWeight, barWeight, onClose }) => {
         const sessions = [];
         const seen = new Set();
         Object.entries(history || {}).forEach(([equipId, arr]) => {
-          if (!Array.isArray(arr)) return;
-          arr.forEach(s => {
+          safeArray(arr).forEach(s => {
             if (!s || typeof s !== 'object') return;
             const cardioType = s.type === 'cardio' ? (s.cardioType || equipId.replace('cardio_', '')) : null;
             const cardioLabel = s.type === 'cardio' ? (s.cardioLabel || EQUIPMENT_DB[equipId]?.name || 'Cardio') : null;
@@ -4124,8 +4116,7 @@ const PlateCalculator = ({ targetWeight, barWeight, onClose }) => {
           });
         });
         Object.entries(cardioHistory || {}).forEach(([cardioType, arr]) => {
-          if (!Array.isArray(arr)) return;
-          arr.forEach(s => {
+          safeArray(arr).forEach(s => {
             if (!s || typeof s !== 'object') return;
             const id = `${s.date}-${s.cardioType || cardioType}-cardio`;
             if (seen.has(id)) return;
@@ -4136,15 +4127,15 @@ const PlateCalculator = ({ targetWeight, barWeight, onClose }) => {
         return sessions;
       }, [history, cardioHistory]);
 
-      const equipmentWithHistory = allEquipment.filter(id => Array.isArray(history[id]) && history[id].length > 0).length;
+      const equipmentWithHistory = allEquipment.filter(id => safeArray(history[id]).length > 0).length;
 
       const MiniChart = ({ equipId }) => {
-        const sessions = Array.isArray(history[equipId]) ? history[equipId] : [];
+        const sessions = safeArray(history[equipId]);
         if (sessions.length < 2) return <p className="text-sm text-gray-400 text-center py-8">Log at least 2 sessions to chart progress</p>;
 
         const dataPoints = sessions.map(s => {
           let maxWeight = 0;
-          (Array.isArray(s.sets) ? s.sets : []).forEach(set => { if (set.weight > maxWeight) maxWeight = set.weight; });
+          safeArray(s.sets).forEach(set => { if (set.weight > maxWeight) maxWeight = set.weight; });
           return { date: new Date(s.date), weight: maxWeight };
         }).filter(d => d.weight > 0).slice(-10);
 
@@ -4250,9 +4241,9 @@ const PlateCalculator = ({ targetWeight, barWeight, onClose }) => {
                         {sortedSessions.map((session, idx) => {
                           const isCardio = session.type === 'cardio';
                           const eq = EQUIPMENT_DB[session.equipId];
-                          const sets = isCardio ? 0 : (Array.isArray(session.sets) ? session.sets.length : 0);
+                          const sets = isCardio ? 0 : safeArray(session.sets).length;
                           const cardioLabel = isCardio ? (session.cardioLabel || eq?.name || 'Cardio') : null;
-                          const durationLabel = isCardio ? (session.duration ? `${session.duration} min` : `${Array.isArray(session.entries) ? session.entries.length : 0} entries`) : null;
+                          const durationLabel = isCardio ? (session.duration ? `${session.duration} min` : `${safeArray(session.entries).length} entries`) : null;
                           const categoryClass = isCardio ? '' : resolveCategoryClass(eq?.target || '');
 
                           return (
@@ -4281,7 +4272,7 @@ const PlateCalculator = ({ targetWeight, barWeight, onClose }) => {
                               
                               {isCardio ? (
                                 <div className="text-xs text-gray-600">
-                                  {(Array.isArray(session.entries) ? session.entries : []).slice(0, 2).map((entry, i) => {
+                                  {safeArray(session.entries).slice(0, 2).map((entry, i) => {
                                     const entryDuration = entry.durationMin || entry.minutes;
                                     const durationLabel = entryDuration ? `${entryDuration} min` : 'Time logged';
                                     const entryUnit = entry.distanceUnit || (entry.poolType === '25m' || entry.poolType === '50m' ? 'm' : entry.poolType === '25yd' ? 'yd' : '');
@@ -4292,13 +4283,13 @@ const PlateCalculator = ({ targetWeight, barWeight, onClose }) => {
                                       </div>
                                     );
                                   })}
-                                  {(Array.isArray(session.entries) ? session.entries.length : 0) > 2 && (
+                                  {safeArray(session.entries).length > 2 && (
                                     <div className="text-[11px] text-gray-400">+{session.entries.length - 2} more entries</div>
                                   )}
                                 </div>
                               ) : (
                                 <div className="grid grid-cols-4 gap-1 mt-2">
-                                  {(Array.isArray(session.sets) ? session.sets : []).map((set, i) => (
+                                  {safeArray(session.sets).map((set, i) => (
                                     <div key={i} className="text-center p-1 bg-white rounded border border-gray-100">
                                       <div className="text-xs font-bold text-gray-900">{set.weight}</div>
                                       <div className="text-[10px] text-gray-500">×{set.reps}</div>
@@ -4331,7 +4322,7 @@ const PlateCalculator = ({ targetWeight, barWeight, onClose }) => {
                     className="w-full px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm font-semibold"
                   />
                   {(() => {
-                    const withHistory = allEquipment.filter(id => Array.isArray(history[id]) && history[id].length > 0);
+                    const withHistory = allEquipment.filter(id => safeArray(history[id]).length > 0);
                     const filtered = withHistory.filter(id => (EQUIPMENT_DB[id]?.name || '').toLowerCase().includes(exerciseHistoryQuery.toLowerCase()));
                     if (filtered.length === 0) {
                       return <div className="text-sm text-gray-500 text-center py-4">No exercises match yet.</div>;
@@ -4340,7 +4331,7 @@ const PlateCalculator = ({ targetWeight, barWeight, onClose }) => {
                       <div className="exercise-history-grid">
                         {filtered.map(id => {
                           const eq = EQUIPMENT_DB[id];
-                          const sessions = (Array.isArray(history[id]) ? history[id] : []).slice(-6).reverse();
+                          const sessions = safeArray(history[id]).slice(-6).reverse();
                           const isExpanded = exerciseHistoryExpanded === id;
                           const categoryClass = resolveCategoryClass(eq?.target || '');
                           return (
@@ -4362,13 +4353,13 @@ const PlateCalculator = ({ targetWeight, barWeight, onClose }) => {
                                   ) : (
                                     <div className="space-y-2">
                                       {sessions.map((session, idx) => {
-                                        const summary = (Array.isArray(session.sets) ? session.sets : []).map(set => `${set.reps}×${set.weight}`).join(', ');
+                                        const summary = safeArray(session.sets).map(set => `${set.reps}×${set.weight}`).join(', ');
                                         return (
                                           <div key={idx} className="p-2 rounded-lg border border-gray-200 bg-white">
                                             <div className="text-[11px] font-bold text-gray-900">
                                               {new Date(session.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                                             </div>
-                                            <div className="text-[10px] text-gray-500">{Array.isArray(session.sets) ? session.sets.length : 0} sets</div>
+                                            <div className="text-[10px] text-gray-500">{safeArray(session.sets).length} sets</div>
                                             <div className="text-[11px] text-gray-700">{summary || 'No sets logged.'}</div>
                                           </div>
                                         );
@@ -4452,7 +4443,7 @@ const PlateCalculator = ({ targetWeight, barWeight, onClose }) => {
                         {recentSessions.map((session, idx) => {
                           const isCardio = session.type === 'cardio';
                           const eq = EQUIPMENT_DB[session.equipId];
-                          const setCount = isCardio ? null : (Array.isArray(session.sets) ? session.sets.length : 0);
+                          const setCount = isCardio ? null : safeArray(session.sets).length;
                           return (
                             <div key={idx} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg border border-gray-100">
                               <div className="flex items-center gap-2">
@@ -4466,7 +4457,7 @@ const PlateCalculator = ({ targetWeight, barWeight, onClose }) => {
                               </div>
                               {isCardio ? (
                                 <div className="text-right">
-                                  <div className="text-xs font-bold text-purple-600">{session.duration ? `${session.duration} min` : `${Array.isArray(session.entries) ? session.entries.length : 0} entries`}</div>
+                                  <div className="text-xs font-bold text-purple-600">{session.duration ? `${session.duration} min` : `${safeArray(session.entries).length} entries`}</div>
                                 </div>
                               ) : (
                                 <div className="text-right">
@@ -4486,9 +4477,9 @@ const PlateCalculator = ({ targetWeight, barWeight, onClose }) => {
                 <Card>
                   <h3 className="font-bold text-gray-900 mb-3">Exercise Progress</h3>
                   <div className="space-y-2">
-                    {allEquipment.filter(id => Array.isArray(history[id]) && history[id].length > 0).slice(0, 5).map(id => {
+                    {allEquipment.filter(id => safeArray(history[id]).length > 0).slice(0, 5).map(id => {
                       const eq = EQUIPMENT_DB[id];
-                      const sessions = Array.isArray(history[id]) ? history[id] : [];
+                      const sessions = safeArray(history[id]);
                       const sessionCount = sessions.length;
                       const bar = Math.min(100, Math.max(10, sessionCount * 12));
                       return (
@@ -4521,7 +4512,7 @@ const PlateCalculator = ({ targetWeight, barWeight, onClose }) => {
                 
                 {(() => {
                   const eq = EQUIPMENT_DB[selectedEquipment];
-                  const sessions = Array.isArray(history[selectedEquipment]) ? history[selectedEquipment] : [];
+                  const sessions = safeArray(history[selectedEquipment]);
                   if (sessions.length === 0) {
                     return (
                       <div className="text-center py-8">
@@ -4551,9 +4542,11 @@ const PlateCalculator = ({ targetWeight, barWeight, onClose }) => {
       const [workoutOpen, setWorkoutOpen] = useState(false);
       const [appearanceOpen, setAppearanceOpen] = useState(false);
       const [analyticsOpen, setAnalyticsOpen] = useState(false);
+      const [patternsOpen, setPatternsOpen] = useState(false);
       const [learnOpen, setLearnOpen] = useState(false);
       const [aboutOpen, setAboutOpen] = useState(false);
       const [dataToolsOpen, setDataToolsOpen] = useState(false);
+      const [advancedOpen, setAdvancedOpen] = useState(false);
 
       const accentOptions = [
         { id: 'red', label: 'Red', color: '#ef4444' },
@@ -4584,19 +4577,6 @@ const PlateCalculator = ({ targetWeight, barWeight, onClose }) => {
           </div>
 
           <div className="flex-1 overflow-y-auto p-4 pb-24 space-y-4">
-            <Card className="space-y-3">
-              <button onClick={onViewPatterns} className="w-full flex items-center justify-between text-left">
-                <div>
-                  <div className="text-xs font-bold text-gray-500 uppercase">Patterns</div>
-                  <div className="text-sm text-gray-500">Friendly signals from your history</div>
-                </div>
-                <div className="flex items-center gap-2 text-sm font-semibold text-purple-600">
-                  <span>Open</span>
-                  <Icon name="ChevronRight" className="w-4 h-4" />
-                </div>
-              </button>
-            </Card>
-
             <Card className="space-y-3">
               <button
                 onClick={() => setAppearanceOpen(prev => !prev)}
@@ -4680,6 +4660,26 @@ const PlateCalculator = ({ targetWeight, barWeight, onClose }) => {
             </Card>
 
             <Card className="space-y-3">
+              <button onClick={() => setPatternsOpen(prev => !prev)} className="w-full flex items-center justify-between text-left">
+                <div>
+                  <div className="text-xs font-bold text-gray-500 uppercase">Patterns</div>
+                  <div className="text-sm text-gray-500">Friendly signals from your history</div>
+                </div>
+                <Icon name="ChevronDown" className={`w-4 h-4 text-gray-400 transition-transform ${patternsOpen ? 'rotate-180' : ''}`} />
+              </button>
+              {patternsOpen && (
+                <div className="space-y-3 animate-expand">
+                  <button
+                    onClick={onViewPatterns}
+                    className="settings-action-button"
+                  >
+                    Open Patterns
+                  </button>
+                </div>
+              )}
+            </Card>
+
+            <Card className="space-y-3">
               <button onClick={() => setAnalyticsOpen(prev => !prev)} className="w-full flex items-center justify-between text-left">
                 <div>
                   <div className="text-xs font-bold text-gray-500 uppercase">Analytics</div>
@@ -4691,7 +4691,7 @@ const PlateCalculator = ({ targetWeight, barWeight, onClose }) => {
                 <div className="space-y-3 animate-expand">
                   <button
                     onClick={onViewAnalytics}
-                    className="w-full py-3 rounded-xl bg-purple-600 text-white font-bold active:scale-[0.98] transition"
+                    className="settings-action-button"
                   >
                     Open Analytics
                   </button>
@@ -4700,14 +4700,27 @@ const PlateCalculator = ({ targetWeight, barWeight, onClose }) => {
             </Card>
 
             <Card className="space-y-3">
-              <div className="text-xs font-bold text-gray-500 uppercase">Developer Options</div>
-              <ToggleRow
-                icon="BarChart"
-                title="Use Demo Data (30 days)"
-                subtitle="Preview analytics and patterns with seeded data"
-                enabled={settings.useDemoData}
-                onToggle={(next) => setSettings({ ...settings, useDemoData: next })}
-              />
+              <button
+                onClick={() => setAdvancedOpen(prev => !prev)}
+                className="w-full flex items-center justify-between text-left"
+              >
+                <div>
+                  <div className="text-xs font-bold text-gray-500 uppercase">Developer options</div>
+                  <div className="text-sm text-gray-500">Advanced preview tools</div>
+                </div>
+                <Icon name="ChevronDown" className={`w-4 h-4 text-gray-400 transition-transform ${advancedOpen ? 'rotate-180' : ''}`} />
+              </button>
+              {advancedOpen && (
+                <div className="space-y-3 animate-expand">
+                  <ToggleRow
+                    icon="BarChart"
+                    title="Use Demo Data (30 days)"
+                    subtitle="Preview analytics and patterns with seeded data"
+                    enabled={settings.useDemoData}
+                    onToggle={(next) => setSettings({ ...settings, useDemoData: next })}
+                  />
+                </div>
+              )}
             </Card>
 
             <Card className="space-y-3">
@@ -4833,7 +4846,7 @@ const PlateCalculator = ({ targetWeight, barWeight, onClose }) => {
               <div className="bg-white rounded-2xl border border-gray-200 p-6 text-center text-gray-600">
                 <div className="text-3xl mb-2">🌱</div>
                 <div className="text-sm font-semibold text-gray-900 mb-2">No patterns yet</div>
-                <div className="text-sm text-gray-500">As you log sessions, this fills in with patterns you can actually use.</div>
+                <div className="text-sm text-gray-500">As you log more sessions, we’ll highlight your training patterns here.</div>
               </div>
             ) : (
               <div className="space-y-3">
