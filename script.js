@@ -297,6 +297,48 @@ const { useState, useEffect, useMemo, useRef, useCallback } = React;
       return 'Other';
     };
 
+    const resolveMuscleKey = (label = '') => {
+      const value = label.toLowerCase();
+      if (value.includes('chest') || value.includes('pec')) return 'chest';
+      if (value.includes('back') || value.includes('lat')) return 'back';
+      if (value.includes('leg') || value.includes('quad') || value.includes('hamstring') || value.includes('glute') || value.includes('calf') || value.includes('thigh')) return 'legs';
+      if (value.includes('shoulder') || value.includes('delt')) return 'shoulders';
+      if (value.includes('bicep') || value.includes('tricep') || value.includes('arm') || value.includes('forearm')) return 'arms';
+      if (value.includes('core') || value.includes('ab')) return 'core';
+      return null;
+    };
+
+    const buildMuscleDistribution = (history = {}, rangeDays = 30) => {
+      const cutoff = new Date();
+      cutoff.setDate(cutoff.getDate() - Math.max(rangeDays - 1, 0));
+      cutoff.setHours(0, 0, 0, 0);
+      const counts = {
+        chest: 0,
+        back: 0,
+        legs: 0,
+        core: 0,
+        arms: 0,
+        shoulders: 0
+      };
+
+      Object.entries(history || {}).forEach(([equipId, arr]) => {
+        const eq = EQUIPMENT_DB[equipId];
+        safeArray(arr).forEach(session => {
+          if (!session?.date) return;
+          const time = new Date(session.date).getTime();
+          if (!Number.isFinite(time) || time < cutoff.getTime()) return;
+          const baseGroup = session.muscleGroup || resolveMuscleGroup(eq);
+          const fallbackLabel = baseGroup === 'Other'
+            ? (session.muscleGroup || eq?.target || eq?.muscles || '')
+            : baseGroup;
+          const key = resolveMuscleKey(fallbackLabel);
+          if (key && counts[key] !== undefined) counts[key] += 1;
+        });
+      });
+
+      return counts;
+    };
+
     const getLastWorkoutDate = (history = {}, cardioHistory = {}) => {
       const dates = [];
       Object.values(history || {}).forEach(arr => {
@@ -4538,11 +4580,12 @@ const PlateCalculator = ({ targetWeight, barWeight, onClose }) => {
     };
 
     // ========== PROFILE TAB ==========
-    const ProfileView = ({ settings, setSettings, themeMode, darkVariant, setThemeMode, setDarkVariant, onViewAnalytics, onViewPatterns, onExportData, onImportData, onResetApp, onResetOnboarding }) => {
+    const ProfileView = ({ settings, setSettings, themeMode, darkVariant, setThemeMode, setDarkVariant, onViewAnalytics, onViewPatterns, onViewMuscleMap, onExportData, onImportData, onResetApp, onResetOnboarding }) => {
       const [workoutOpen, setWorkoutOpen] = useState(false);
       const [appearanceOpen, setAppearanceOpen] = useState(false);
       const [analyticsOpen, setAnalyticsOpen] = useState(false);
       const [patternsOpen, setPatternsOpen] = useState(false);
+      const [muscleMapOpen, setMuscleMapOpen] = useState(false);
       const [learnOpen, setLearnOpen] = useState(false);
       const [aboutOpen, setAboutOpen] = useState(false);
       const [dataToolsOpen, setDataToolsOpen] = useState(false);
@@ -4674,6 +4717,30 @@ const PlateCalculator = ({ targetWeight, barWeight, onClose }) => {
                     className="settings-action-button"
                   >
                     Open Patterns
+                  </button>
+                </div>
+              )}
+            </Card>
+
+            <Card className="space-y-3">
+              <button onClick={() => setMuscleMapOpen(prev => !prev)} className="w-full flex items-center justify-between text-left">
+                <div>
+                  <div className="text-xs font-bold text-gray-500 uppercase">Muscle Map</div>
+                  <div className="text-sm text-gray-500">Visual snapshot of recent focus</div>
+                </div>
+                <Icon name="ChevronDown" className={`w-4 h-4 text-gray-400 transition-transform ${muscleMapOpen ? 'rotate-180' : ''}`} />
+              </button>
+              {muscleMapOpen && (
+                <div className="space-y-3 animate-expand">
+                  <div>
+                    <div className="text-sm font-semibold text-gray-900">Muscle Map</div>
+                    <div className="text-sm text-gray-500">See which muscle groups you’ve focused on recently. No streaks, no pressure—just a visual snapshot.</div>
+                  </div>
+                  <button
+                    onClick={onViewMuscleMap}
+                    className="settings-action-button"
+                  >
+                    Open Muscle Map
                   </button>
                 </div>
               )}
@@ -4819,6 +4886,116 @@ const PlateCalculator = ({ targetWeight, barWeight, onClose }) => {
       );
     };
 
+    const MuscleMapScreen = ({ history, onClose }) => {
+      const [rangeDays, setRangeDays] = useState(30);
+
+      // Adjust time ranges or add muscle groups by editing these lists.
+      const rangeOptions = [
+        { label: '7D', days: 7 },
+        { label: '30D', days: 30 },
+        { label: '90D', days: 90 }
+      ];
+
+      const muscleGroups = [
+        { key: 'chest', label: 'Chest', tint: 'var(--tint-chest)' },
+        { key: 'back', label: 'Back', tint: 'var(--tint-back)' },
+        { key: 'legs', label: 'Legs', tint: 'var(--tint-legs)' },
+        { key: 'core', label: 'Core', tint: 'var(--tint-core)' },
+        { key: 'arms', label: 'Arms', tint: 'var(--tint-arms)' },
+        { key: 'shoulders', label: 'Shoulders', tint: 'var(--tint-shoulders)' }
+      ];
+
+      const muscleCounts = useMemo(() => buildMuscleDistribution(history, rangeDays), [history, rangeDays]);
+      const totalCount = muscleGroups.reduce((sum, group) => sum + (muscleCounts[group.key] || 0), 0);
+      const topGroup = muscleGroups.reduce((best, group) => {
+        if (!best) return group;
+        return (muscleCounts[group.key] || 0) > (muscleCounts[best.key] || 0) ? group : best;
+      }, null);
+
+      const gradient = useMemo(() => {
+        if (!totalCount) return '';
+        let start = 0;
+        const segments = muscleGroups.reduce((acc, group) => {
+          const count = muscleCounts[group.key] || 0;
+          if (count <= 0) return acc;
+          const degrees = (count / totalCount) * 360;
+          acc.push(`${group.tint} ${start}deg ${start + degrees}deg`);
+          start += degrees;
+          return acc;
+        }, []);
+        return `conic-gradient(${segments.join(', ')})`;
+      }, [muscleCounts, muscleGroups, totalCount]);
+
+      return (
+        <div className="muscle-map-screen flex flex-col h-full bg-gray-50">
+          <div className="bg-white border-b border-gray-100 sticky top-0 z-10" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
+            <div className="p-4 flex items-center gap-3">
+              <button onClick={onClose} className="p-2 rounded-full bg-gray-100">
+                <Icon name="ChevronLeft" className="w-5 h-5 text-gray-700" />
+              </button>
+              <div>
+                <div className="text-xs font-bold text-gray-500 uppercase">Profile</div>
+                <div className="text-lg font-black text-gray-900">Muscle Map</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex-1 overflow-y-auto p-4 pb-24 space-y-4">
+            <div className="muscle-map-header">
+              <div className="text-xl font-black text-gray-900">Muscle Map</div>
+              <div className="text-sm text-gray-500">This chart shows which muscle groups you’ve focused on over the selected time range.</div>
+            </div>
+
+            <div className="muscle-map-range-toggle">
+              {rangeOptions.map(option => (
+                <button
+                  key={option.days}
+                  onClick={() => setRangeDays(option.days)}
+                  className={`muscle-map-toggle ${rangeDays === option.days ? 'active' : ''}`}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+
+            {totalCount === 0 ? (
+              <div className="muscle-map-empty">
+                <div className="muscle-map-empty-title">Nothing to show yet.</div>
+                <div className="muscle-map-empty-body">As you log workouts, this chart will highlight where you’ve been focusing. No streaks, no pressure.</div>
+              </div>
+            ) : (
+              <>
+                <div className="muscle-pie-wrapper">
+                  <div className="muscle-pie" style={{ background: gradient }}>
+                    <div className="muscle-pie-inner">
+                      <div className="muscle-pie-label">
+                        <div className="muscle-pie-title">{topGroup?.label || 'Focus'}</div>
+                        <div className="muscle-pie-subline">Most sessions in the last {rangeDays} days</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="muscle-legend">
+                  {muscleGroups.map(group => {
+                    const count = muscleCounts[group.key] || 0;
+                    const percent = totalCount ? Math.round((count / totalCount) * 100) : 0;
+                    return (
+                      <div key={group.key} className="muscle-legend-item">
+                        <span className="muscle-legend-dot" style={{ background: group.tint }}></span>
+                        <span className="muscle-legend-label">{group.label}</span>
+                        <span className="muscle-legend-value">{percent}%</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      );
+    };
+
     const PatternsScreen = ({ history, cardioHistory, onClose }) => {
       const patterns = useMemo(() => buildPatternsFromHistory(history, cardioHistory), [history, cardioHistory]);
 
@@ -4837,6 +5014,12 @@ const PlateCalculator = ({ targetWeight, barWeight, onClose }) => {
           </div>
 
           <div className="flex-1 overflow-y-auto p-4 pb-24 space-y-3">
+            <div className="patterns-coming-soon">
+              <div className="patterns-coming-title">Patterns (Coming Soon)</div>
+              <div className="patterns-coming-body">
+                This feature is in progress. Soon you’ll see gentle, no-guilt notes about your training style—like time-of-day tendencies and muscle-group balance.
+              </div>
+            </div>
             <div className="pattern-intro bg-white rounded-2xl border border-gray-200 p-4 shadow-sm">
               <div className="text-sm font-semibold text-gray-900">Gentle insights from your recent training.</div>
               <div className="text-xs text-gray-500">These update as you keep logging sessions.</div>
@@ -5517,6 +5700,7 @@ const CardioLogger = ({ id, onClose, onUpdateSessionLogs, sessionLogs, history, 
       const [view, setView] = useState('onboarding');
       const [showAnalytics, setShowAnalytics] = useState(false);
       const [showPatterns, setShowPatterns] = useState(false);
+      const [showMuscleMap, setShowMuscleMap] = useState(false);
       const [showMatrix, setShowMatrix] = useState(false);
       const [showPowerUp, setShowPowerUp] = useState(false);
       const [showGlory, setShowGlory] = useState(false);
@@ -7008,7 +7192,13 @@ return (
                     onClose={() => setShowPatterns(false)}
                   />
                 </div>
-                <div className={`page ${!showAnalytics && !showPatterns && tab === 'home' ? 'active' : ''}`} aria-hidden={showAnalytics || showPatterns || tab !== 'home'}>
+                <div className={`page ${showMuscleMap ? 'active' : ''}`} aria-hidden={!showMuscleMap}>
+                  <MuscleMapScreen
+                    history={effectiveHistory}
+                    onClose={() => setShowMuscleMap(false)}
+                  />
+                </div>
+                <div className={`page ${!showAnalytics && !showPatterns && !showMuscleMap && tab === 'home' ? 'active' : ''}`} aria-hidden={showAnalytics || showPatterns || showMuscleMap || tab !== 'home'}>
                   <Home
                     profile={profile}
                     lastWorkoutLabel={lastWorkoutLabel}
@@ -7035,7 +7225,7 @@ return (
                     onLongPressRestDay={() => setShowButDidYouDie(true)}
                   />
                 </div>
-                <div className={`page ${!showAnalytics && !showPatterns && tab === 'workout' ? 'active' : ''}`} aria-hidden={showAnalytics || showPatterns || tab !== 'workout'}>
+                <div className={`page ${!showAnalytics && !showPatterns && !showMuscleMap && tab === 'workout' ? 'active' : ''}`} aria-hidden={showAnalytics || showPatterns || showMuscleMap || tab !== 'workout'}>
                   <Workout
                     profile={profile}
                     onSelectExercise={handleSelectExercise}
@@ -7060,7 +7250,7 @@ return (
                     sessionIntent={sessionIntent}
                   />
                 </div>
-                <div className={`page ${!showAnalytics && !showPatterns && tab === 'profile' ? 'active' : ''}`} aria-hidden={showAnalytics || showPatterns || tab !== 'profile'}>
+                <div className={`page ${!showAnalytics && !showPatterns && !showMuscleMap && tab === 'profile' ? 'active' : ''}`} aria-hidden={showAnalytics || showPatterns || showMuscleMap || tab !== 'profile'}>
                   <ProfileView
                     settings={settings}
                     setSettings={setSettings}
@@ -7070,11 +7260,18 @@ return (
                     setDarkVariant={setDarkVariant}
                     onViewAnalytics={() => {
                       setShowPatterns(false);
+                      setShowMuscleMap(false);
                       setShowAnalytics(true);
                     }}
                     onViewPatterns={() => {
                       setShowAnalytics(false);
+                      setShowMuscleMap(false);
                       setShowPatterns(true);
+                    }}
+                    onViewMuscleMap={() => {
+                      setShowAnalytics(false);
+                      setShowPatterns(false);
+                      setShowMuscleMap(true);
                     }}
                     onExportData={handleExportData}
                     onImportData={handleImportData}
@@ -7085,7 +7282,7 @@ return (
               </div>
             </div>
 
-            {!showAnalytics && !showPatterns && <TabBar currentTab={tab} setTab={setTab} onWorkoutTripleTap={() => setShowSpartan(true)} />}
+            {!showAnalytics && !showPatterns && !showMuscleMap && <TabBar currentTab={tab} setTab={setTab} onWorkoutTripleTap={() => setShowSpartan(true)} />}
 
             {activeEquipment && (
                 <EquipmentDetail
