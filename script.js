@@ -2320,22 +2320,42 @@ const Workout = ({ profile, onSelectExercise, settings, setSettings, pinnedExerc
     return '🏋️‍♂️';
   };
 
+  const MUSCLE_GROUP_CATEGORY_MAP = {
+    chest: 'chest',
+    pecs: 'chest',
+    'upper chest': 'chest',
+    back: 'back',
+    'upper back': 'back',
+    'lower back': 'back',
+    lats: 'back',
+    traps: 'back',
+    legs: 'legs',
+    quads: 'legs',
+    quadriceps: 'legs',
+    hamstrings: 'legs',
+    glutes: 'legs',
+    calves: 'legs',
+    'inner thighs': 'legs',
+    adductors: 'legs',
+    core: 'core',
+    abs: 'core',
+    obliques: 'core',
+    biceps: 'arms',
+    triceps: 'arms',
+    forearms: 'arms',
+    brachialis: 'arms',
+    shoulders: 'shoulders',
+    delts: 'shoulders',
+    'front delts': 'shoulders',
+    'side delts': 'shoulders'
+  };
+
   const resolveCategoryClass = (label = '') => {
-    const normalized = `${label}`.toLowerCase();
-    if (!normalized) return '';
-    if (normalized.includes('chest')) return 'category-chest';
-    if (normalized.includes('back') || normalized.includes('lat')) return 'category-back';
-    if (
-      normalized.includes('leg') ||
-      normalized.includes('quad') ||
-      normalized.includes('hamstring') ||
-      normalized.includes('glute') ||
-      normalized.includes('calf') ||
-      normalized.includes('thigh')
-    ) {
-      return 'category-legs';
-    }
-    return '';
+    if (!label) return '';
+    const primary = `${label}`.split(',')[0].trim().toLowerCase();
+    if (!primary) return '';
+    const normalizedCategory = MUSCLE_GROUP_CATEGORY_MAP[primary] || null;
+    return normalizedCategory ? `category-${normalizedCategory}` : '';
   };
 
   const renderExerciseRow = (id, actionLabel = 'Add', onAction) => {

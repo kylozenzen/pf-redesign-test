@@ -26,6 +26,9 @@
   --tint-chest: #f87171;
   --tint-back: #60a5fa;
   --tint-legs: #34d399;
+  --tint-core: #22d3ee;
+  --tint-arms: #c084fc;
+  --tint-shoulders: #fbbf24;
   --focus-ring: 0 0 0 3px rgba(99, 102, 241, 0.28);
   --surface-grad: linear-gradient(180deg, color-mix(in srgb, var(--surface) 96%, white) 0%, var(--surface) 100%);
   --ease-standard: cubic-bezier(0.2, 0.8, 0.2, 1);
@@ -79,6 +82,9 @@ body.dark-mode {
   --tint-chest: #fb7185;
   --tint-back: #7dd3fc;
   --tint-legs: #6ee7b7;
+  --tint-core: #38bdf8;
+  --tint-arms: #d8b4fe;
+  --tint-shoulders: #fde047;
 }
 
 body.dark-mode.theme-red {
@@ -125,7 +131,10 @@ body.dark-mode.theme-blue {
 
 .category-chest,
 .category-back,
-.category-legs {
+.category-legs,
+.category-core,
+.category-arms,
+.category-shoulders {
   background: var(--card-gradient), color-mix(in srgb, var(--surface) 94%, var(--category-tint)) !important;
   border-color: color-mix(in srgb, var(--border) 78%, var(--category-tint)) !important;
   border-left-color: color-mix(in srgb, var(--category-tint) 70%, var(--border)) !important;
@@ -141,6 +150,18 @@ body.dark-mode.theme-blue {
 
 .category-legs {
   --category-tint: var(--tint-legs);
+}
+
+.category-core {
+  --category-tint: var(--tint-core);
+}
+
+.category-arms {
+  --category-tint: var(--tint-arms);
+}
+
+.category-shoulders {
+  --category-tint: var(--tint-shoulders);
 }
 
 .text-gray-900,
