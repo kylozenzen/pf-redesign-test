@@ -458,19 +458,17 @@ const { useState, useEffect, useMemo, useRef, useCallback } = React;
       return latest;
     };
 
-    const formatLastUsedLabel = (lastDate, now = new Date()) => {
-      if (!lastDate) {
-        return 'Not used yet';
-      }
+    const formatDaysAgo = (lastDate, now = new Date()) => {
+      if (!lastDate) return 'Not used yet';
+
       const msPerDay = 24 * 60 * 60 * 1000;
       const nowDate = now instanceof Date ? now : new Date(now);
       const diffDays = Math.floor((nowDate - lastDate) / msPerDay);
-      if (diffDays <= 7) {
-        const weekday = lastDate.toLocaleDateString(undefined, { weekday: 'short' });
-        return `Last used • ${weekday}`;
-      }
-      const dateStr = lastDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-      return `Last used • ${dateStr}`;
+
+      if (diffDays < 1) return 'Today';
+      if (diffDays === 1) return '1 day ago';
+      if (diffDays <= 30) return `${diffDays} days ago`;
+      return 'Over a month ago';
     };
 
     const getLastWorkoutDate = (history = {}, cardioHistory = {}) => {
@@ -2778,7 +2776,8 @@ const Home = ({
               )}
             </div>
           </div>
-          <div className="home-card-row no-scrollbar">
+          <div className="home-muscle-section">
+            <div className="home-card-row no-scrollbar">
             {muscleGroups.map(group => {
               return (
                 <div key={group.key} className="home-mini-card home-muscle-card">
@@ -2789,6 +2788,7 @@ const Home = ({
                 </div>
               );
             })}
+            </div>
           </div>
           <div className="home-section-card">
             <div className="home-section-title">Start Today</div>
@@ -3001,7 +3001,7 @@ const Workout = ({ profile, history, cardioHistory, onSelectExercise, settings, 
     const categoryClass = resolveCategoryClass(eq.target || eq.muscles || '');
     const badgeGroup = normalizeMuscleGroup(eq);
     const lastUsedDate = getLastUsedDateForExercise(id, history, cardioHistory);
-    const lastUsedLabel = formatLastUsedLabel(lastUsedDate);
+    const lastUsedLabel = formatDaysAgo(lastUsedDate);
     return (
       <div
         key={id}
@@ -3060,7 +3060,7 @@ const Workout = ({ profile, history, cardioHistory, onSelectExercise, settings, 
     const categoryClass = resolveCategoryClass(eq.target || eq.muscles || '');
     const badgeGroup = normalizeMuscleGroup(eq);
     const lastUsedDate = getLastUsedDateForExercise(id, history, cardioHistory);
-    const lastUsedLabel = formatLastUsedLabel(lastUsedDate);
+    const lastUsedLabel = formatDaysAgo(lastUsedDate);
     return (
       <div key={id} className={`tile text-left exercise-library-card ${categoryClass}`}>
         <div className="flex items-center justify-between mb-1">
