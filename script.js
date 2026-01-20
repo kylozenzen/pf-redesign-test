@@ -308,11 +308,18 @@ const { useState, useEffect, useMemo, useRef, useCallback } = React;
       return null;
     };
 
-    const collectRecentMuscles = (history = {}, rangeDays = 14) => {
+    const buildMuscleDistribution = (history = {}, rangeDays = 30) => {
       const cutoff = new Date();
       cutoff.setDate(cutoff.getDate() - Math.max(rangeDays - 1, 0));
       cutoff.setHours(0, 0, 0, 0);
-      const muscles = new Set();
+      const counts = {
+        chest: 0,
+        back: 0,
+        legs: 0,
+        core: 0,
+        arms: 0,
+        shoulders: 0
+      };
 
       Object.entries(history || {}).forEach(([equipId, arr]) => {
         const eq = EQUIPMENT_DB[equipId];
@@ -325,11 +332,11 @@ const { useState, useEffect, useMemo, useRef, useCallback } = React;
             ? (session.muscleGroup || eq?.target || eq?.muscles || '')
             : baseGroup;
           const key = resolveMuscleKey(fallbackLabel);
-          if (key) muscles.add(key);
+          if (key && counts[key] !== undefined) counts[key] += 1;
         });
       });
 
-      return muscles;
+      return counts;
     };
 
     const getLastWorkoutDate = (history = {}, cardioHistory = {}) => {
@@ -4578,6 +4585,7 @@ const PlateCalculator = ({ targetWeight, barWeight, onClose }) => {
       const [appearanceOpen, setAppearanceOpen] = useState(false);
       const [analyticsOpen, setAnalyticsOpen] = useState(false);
       const [patternsOpen, setPatternsOpen] = useState(false);
+      const [muscleMapOpen, setMuscleMapOpen] = useState(false);
       const [learnOpen, setLearnOpen] = useState(false);
       const [aboutOpen, setAboutOpen] = useState(false);
       const [dataToolsOpen, setDataToolsOpen] = useState(false);
@@ -4715,16 +4723,27 @@ const PlateCalculator = ({ targetWeight, barWeight, onClose }) => {
             </Card>
 
             <Card className="space-y-3">
-              <div>
-                <div className="text-xs font-bold text-gray-500 uppercase">Muscle Map</div>
-                <div className="text-sm text-gray-500">See recent training highlights</div>
-              </div>
-              <button
-                onClick={onViewMuscleMap}
-                className="settings-action-button"
-              >
-                Open Muscle Map
+              <button onClick={() => setMuscleMapOpen(prev => !prev)} className="w-full flex items-center justify-between text-left">
+                <div>
+                  <div className="text-xs font-bold text-gray-500 uppercase">Muscle Map</div>
+                  <div className="text-sm text-gray-500">Visual snapshot of recent focus</div>
+                </div>
+                <Icon name="ChevronDown" className={`w-4 h-4 text-gray-400 transition-transform ${muscleMapOpen ? 'rotate-180' : ''}`} />
               </button>
+              {muscleMapOpen && (
+                <div className="space-y-3 animate-expand">
+                  <div>
+                    <div className="text-sm font-semibold text-gray-900">Muscle Map</div>
+                    <div className="text-sm text-gray-500">See which muscle groups you’ve focused on recently. No streaks, no pressure—just a visual snapshot.</div>
+                  </div>
+                  <button
+                    onClick={onViewMuscleMap}
+                    className="settings-action-button"
+                  >
+                    Open Muscle Map
+                  </button>
+                </div>
+              )}
             </Card>
 
             <Card className="space-y-3">
@@ -4868,23 +4887,16 @@ const PlateCalculator = ({ targetWeight, barWeight, onClose }) => {
     };
 
     const MuscleMapScreen = ({ history, onClose }) => {
-      const [rangeDays, setRangeDays] = useState(14);
-      const recentMuscles = useMemo(() => collectRecentMuscles(history, rangeDays), [history, rangeDays]);
-      const totalSessions = useMemo(() => {
-        let count = 0;
-        Object.values(history || {}).forEach(arr => {
-          count += safeArray(arr).filter(session => session?.date).length;
-        });
-        return count;
-      }, [history]);
+      const [rangeDays, setRangeDays] = useState(30);
 
-      const filters = [
+      // Adjust time ranges or add muscle groups by editing these lists.
+      const rangeOptions = [
         { label: '7D', days: 7 },
-        { label: '14D', days: 14 },
-        { label: '30D', days: 30 }
+        { label: '30D', days: 30 },
+        { label: '90D', days: 90 }
       ];
 
-      const legend = [
+      const muscleGroups = [
         { key: 'chest', label: 'Chest', tint: 'var(--tint-chest)' },
         { key: 'back', label: 'Back', tint: 'var(--tint-back)' },
         { key: 'legs', label: 'Legs', tint: 'var(--tint-legs)' },
@@ -4892,6 +4904,27 @@ const PlateCalculator = ({ targetWeight, barWeight, onClose }) => {
         { key: 'arms', label: 'Arms', tint: 'var(--tint-arms)' },
         { key: 'shoulders', label: 'Shoulders', tint: 'var(--tint-shoulders)' }
       ];
+
+      const muscleCounts = useMemo(() => buildMuscleDistribution(history, rangeDays), [history, rangeDays]);
+      const totalCount = muscleGroups.reduce((sum, group) => sum + (muscleCounts[group.key] || 0), 0);
+      const topGroup = muscleGroups.reduce((best, group) => {
+        if (!best) return group;
+        return (muscleCounts[group.key] || 0) > (muscleCounts[best.key] || 0) ? group : best;
+      }, null);
+
+      const gradient = useMemo(() => {
+        if (!totalCount) return '';
+        let start = 0;
+        const segments = muscleGroups.reduce((acc, group) => {
+          const count = muscleCounts[group.key] || 0;
+          if (count <= 0) return acc;
+          const degrees = (count / totalCount) * 360;
+          acc.push(`${group.tint} ${start}deg ${start + degrees}deg`);
+          start += degrees;
+          return acc;
+        }, []);
+        return `conic-gradient(${segments.join(', ')})`;
+      }, [muscleCounts, muscleGroups, totalCount]);
 
       return (
         <div className="muscle-map-screen flex flex-col h-full bg-gray-50">
@@ -4908,182 +4941,56 @@ const PlateCalculator = ({ targetWeight, barWeight, onClose }) => {
           </div>
 
           <div className="flex-1 overflow-y-auto p-4 pb-24 space-y-4">
-            <div className="muscle-map-controls">
-              {filters.map(filter => (
+            <div className="muscle-map-header">
+              <div className="text-xl font-black text-gray-900">Muscle Map</div>
+              <div className="text-sm text-gray-500">This chart shows which muscle groups you’ve focused on over the selected time range.</div>
+            </div>
+
+            <div className="muscle-map-range-toggle">
+              {rangeOptions.map(option => (
                 <button
-                  key={filter.days}
-                  onClick={() => setRangeDays(filter.days)}
-                  className={`muscle-map-control ${rangeDays === filter.days ? 'active' : ''}`}
+                  key={option.days}
+                  onClick={() => setRangeDays(option.days)}
+                  className={`muscle-map-toggle ${rangeDays === option.days ? 'active' : ''}`}
                 >
-                  {filter.label}
+                  {option.label}
                 </button>
               ))}
             </div>
 
-            <div className="muscle-map-wrapper">
-              <svg className="muscle-map-svg" viewBox="0 0 360 220" role="img" aria-label="Front and back muscle map silhouettes">
-                <g transform="translate(30 20)">
-                  <circle className="muscle-outline" cx="60" cy="12" r="10" />
-                  <rect className="muscle-outline" x="38" y="24" width="44" height="98" rx="20" />
-                  <rect
-                    className={`muscle-zone ${recentMuscles.has('shoulders') ? 'active' : ''}`}
-                    data-muscle="shoulders"
-                    style={{ '--muscle-tint': 'var(--tint-shoulders)' }}
-                    x="30"
-                    y="24"
-                    width="60"
-                    height="18"
-                    rx="9"
-                  />
-                  <rect
-                    className={`muscle-zone ${recentMuscles.has('chest') ? 'active' : ''}`}
-                    data-muscle="chest"
-                    style={{ '--muscle-tint': 'var(--tint-chest)' }}
-                    x="34"
-                    y="44"
-                    width="52"
-                    height="26"
-                    rx="10"
-                  />
-                  <rect
-                    className={`muscle-zone ${recentMuscles.has('core') ? 'active' : ''}`}
-                    data-muscle="core"
-                    style={{ '--muscle-tint': 'var(--tint-core)' }}
-                    x="38"
-                    y="72"
-                    width="44"
-                    height="26"
-                    rx="10"
-                  />
-                  <rect
-                    className={`muscle-zone ${recentMuscles.has('arms') ? 'active' : ''}`}
-                    data-muscle="arms"
-                    style={{ '--muscle-tint': 'var(--tint-arms)' }}
-                    x="20"
-                    y="44"
-                    width="12"
-                    height="58"
-                    rx="6"
-                  />
-                  <rect
-                    className={`muscle-zone ${recentMuscles.has('arms') ? 'active' : ''}`}
-                    data-muscle="arms"
-                    style={{ '--muscle-tint': 'var(--tint-arms)' }}
-                    x="88"
-                    y="44"
-                    width="12"
-                    height="58"
-                    rx="6"
-                  />
-                  <rect
-                    className={`muscle-zone ${recentMuscles.has('legs') ? 'active' : ''}`}
-                    data-muscle="legs"
-                    style={{ '--muscle-tint': 'var(--tint-legs)' }}
-                    x="44"
-                    y="104"
-                    width="16"
-                    height="60"
-                    rx="8"
-                  />
-                  <rect
-                    className={`muscle-zone ${recentMuscles.has('legs') ? 'active' : ''}`}
-                    data-muscle="legs"
-                    style={{ '--muscle-tint': 'var(--tint-legs)' }}
-                    x="66"
-                    y="104"
-                    width="16"
-                    height="60"
-                    rx="8"
-                  />
-                </g>
-
-                <g transform="translate(200 20)">
-                  <circle className="muscle-outline" cx="60" cy="12" r="10" />
-                  <rect className="muscle-outline" x="38" y="24" width="44" height="98" rx="20" />
-                  <rect
-                    className={`muscle-zone ${recentMuscles.has('shoulders') ? 'active' : ''}`}
-                    data-muscle="shoulders"
-                    style={{ '--muscle-tint': 'var(--tint-shoulders)' }}
-                    x="30"
-                    y="24"
-                    width="60"
-                    height="18"
-                    rx="9"
-                  />
-                  <rect
-                    className={`muscle-zone ${recentMuscles.has('back') ? 'active' : ''}`}
-                    data-muscle="back"
-                    style={{ '--muscle-tint': 'var(--tint-back)' }}
-                    x="34"
-                    y="44"
-                    width="52"
-                    height="54"
-                    rx="12"
-                  />
-                  <rect
-                    className={`muscle-zone ${recentMuscles.has('arms') ? 'active' : ''}`}
-                    data-muscle="arms"
-                    style={{ '--muscle-tint': 'var(--tint-arms)' }}
-                    x="20"
-                    y="44"
-                    width="12"
-                    height="58"
-                    rx="6"
-                  />
-                  <rect
-                    className={`muscle-zone ${recentMuscles.has('arms') ? 'active' : ''}`}
-                    data-muscle="arms"
-                    style={{ '--muscle-tint': 'var(--tint-arms)' }}
-                    x="88"
-                    y="44"
-                    width="12"
-                    height="58"
-                    rx="6"
-                  />
-                  <rect
-                    className={`muscle-zone ${recentMuscles.has('legs') ? 'active' : ''}`}
-                    data-muscle="legs"
-                    style={{ '--muscle-tint': 'var(--tint-legs)' }}
-                    x="44"
-                    y="104"
-                    width="16"
-                    height="60"
-                    rx="8"
-                  />
-                  <rect
-                    className={`muscle-zone ${recentMuscles.has('legs') ? 'active' : ''}`}
-                    data-muscle="legs"
-                    style={{ '--muscle-tint': 'var(--tint-legs)' }}
-                    x="66"
-                    y="104"
-                    width="16"
-                    height="60"
-                    rx="8"
-                  />
-                </g>
-              </svg>
-              {totalSessions === 0 && (
-                <div className="muscle-map-empty">
-                  As you log workouts, this map will light up with what you’ve trained recently.
+            {totalCount === 0 ? (
+              <div className="muscle-map-empty">
+                <div className="muscle-map-empty-title">Nothing to show yet.</div>
+                <div className="muscle-map-empty-body">As you log workouts, this chart will highlight where you’ve been focusing. No streaks, no pressure.</div>
+              </div>
+            ) : (
+              <>
+                <div className="muscle-pie-wrapper">
+                  <div className="muscle-pie" style={{ background: gradient }}>
+                    <div className="muscle-pie-inner">
+                      <div className="muscle-pie-label">
+                        <div className="muscle-pie-title">{topGroup?.label || 'Focus'}</div>
+                        <div className="muscle-pie-subline">Most sessions in the last {rangeDays} days</div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              )}
-            </div>
 
-            <div className="muscle-legend">
-              {legend.map(item => (
-                <span
-                  key={item.key}
-                  className={`muscle-chip ${recentMuscles.has(item.key) ? 'active' : ''}`}
-                  style={{ '--chip-tint': item.tint }}
-                >
-                  {item.label}
-                </span>
-              ))}
-            </div>
-
-            <div className="muscle-map-note">
-              Highlights show muscles trained in the last {rangeDays} days.
-            </div>
+                <div className="muscle-legend">
+                  {muscleGroups.map(group => {
+                    const count = muscleCounts[group.key] || 0;
+                    const percent = totalCount ? Math.round((count / totalCount) * 100) : 0;
+                    return (
+                      <div key={group.key} className="muscle-legend-item">
+                        <span className="muscle-legend-dot" style={{ background: group.tint }}></span>
+                        <span className="muscle-legend-label">{group.label}</span>
+                        <span className="muscle-legend-value">{percent}%</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            )}
           </div>
         </div>
       );

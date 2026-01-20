@@ -335,7 +335,13 @@ body.app-shell {
   background: var(--bg-gradient);
 }
 
-.muscle-map-controls {
+.muscle-map-header {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.muscle-map-range-toggle {
   display: flex;
   gap: 8px;
   padding: 6px;
@@ -345,7 +351,7 @@ body.app-shell {
   box-shadow: var(--shadow-card);
 }
 
-.muscle-map-control {
+.muscle-map-toggle {
   flex: 1;
   padding: 8px 0;
   border-radius: 12px;
@@ -356,14 +362,63 @@ body.app-shell {
   transition: background 160ms var(--ease-standard), color 160ms var(--ease-standard), box-shadow 160ms var(--ease-standard);
 }
 
-.muscle-map-control.active {
+.muscle-map-toggle.active {
   background: color-mix(in srgb, var(--accent) 18%, transparent);
   color: var(--accent);
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 30%, transparent);
 }
 
-.muscle-map-wrapper {
-  padding: 16px;
+.muscle-pie-wrapper {
+  padding: 20px;
+  border-radius: var(--radius-card);
+  background: var(--card-gradient), var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-card);
+  display: flex;
+  justify-content: center;
+}
+
+.muscle-pie {
+  width: min(220px, 70vw);
+  height: min(220px, 70vw);
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  position: relative;
+}
+
+.muscle-pie-inner {
+  width: 62%;
+  height: 62%;
+  border-radius: 999px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  display: grid;
+  place-items: center;
+  padding: 10px;
+  text-align: center;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--border) 70%, transparent);
+}
+
+.muscle-pie-label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.muscle-pie-title {
+  font-weight: 800;
+  font-size: 0.95rem;
+  color: var(--text-strong);
+}
+
+.muscle-pie-subline {
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+.muscle-map-empty {
+  padding: 20px;
   border-radius: var(--radius-card);
   background: var(--card-gradient), var(--surface);
   border: 1px solid var(--border);
@@ -371,65 +426,49 @@ body.app-shell {
   text-align: center;
 }
 
-.muscle-map-svg {
-  width: 100%;
-  max-width: 360px;
-  height: auto;
-  margin: 0 auto;
-  display: block;
+.muscle-map-empty-title {
+  font-weight: 700;
+  color: var(--text-strong);
+  margin-bottom: 6px;
 }
 
-.muscle-outline {
-  fill: none;
-  stroke: color-mix(in srgb, var(--border) 80%, transparent);
-  stroke-width: 2;
-}
-
-.muscle-zone {
-  fill: color-mix(in srgb, var(--surface-2) 85%, transparent);
-  stroke: color-mix(in srgb, var(--border) 80%, transparent);
-  stroke-width: 1.5;
-  transition: fill 200ms var(--ease-standard), filter 200ms var(--ease-standard), stroke 200ms var(--ease-standard);
-  cursor: pointer;
-}
-
-.muscle-zone.active {
-  fill: color-mix(in srgb, var(--muscle-tint) 28%, transparent);
-  stroke: color-mix(in srgb, var(--muscle-tint) 60%, var(--border));
-  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--muscle-tint) 55%, transparent));
-}
-
-.muscle-map-empty {
-  margin-top: 12px;
+.muscle-map-empty-body {
   font-size: 0.85rem;
   color: var(--muted);
 }
 
 .muscle-legend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+  display: grid;
+  gap: 10px;
 }
 
-.muscle-chip {
-  padding: 6px 12px;
+.muscle-legend-item {
+  display: grid;
+  grid-template-columns: 16px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: var(--card-gradient), var(--surface);
+  border: 1px solid var(--border);
+}
+
+.muscle-legend-dot {
+  width: 12px;
+  height: 12px;
   border-radius: 999px;
-  font-size: 0.75rem;
+}
+
+.muscle-legend-label {
+  font-size: 0.85rem;
   font-weight: 600;
-  border: 1px solid color-mix(in srgb, var(--chip-tint) 30%, var(--border));
-  color: color-mix(in srgb, var(--text) 82%, var(--chip-tint));
-  background: color-mix(in srgb, var(--chip-tint) 12%, var(--surface));
-  transition: background 160ms var(--ease-standard), color 160ms var(--ease-standard);
+  color: var(--text);
 }
 
-.muscle-chip.active {
-  background: color-mix(in srgb, var(--chip-tint) 24%, var(--surface));
-  color: color-mix(in srgb, var(--chip-tint) 80%, var(--text-strong));
-}
-
-.muscle-map-note {
+.muscle-legend-value {
   font-size: 0.8rem;
   color: var(--muted);
+  font-weight: 600;
 }
 
 .home-screen {
