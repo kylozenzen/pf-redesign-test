@@ -220,6 +220,46 @@ body.dark-mode.theme-blue {
   box-shadow: var(--shadow-card-strong);
 }
 
+.patterns-screen {
+  background: var(--bg-gradient);
+}
+
+.pattern-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px;
+  border-radius: var(--radius-card);
+  background: var(--card-gradient), var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-card);
+}
+
+.pattern-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.pattern-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-strong);
+  margin-bottom: 4px;
+}
+
+.pattern-subtext {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
 .shadow-xl {
   box-shadow: var(--shadow-card-strong);
 }

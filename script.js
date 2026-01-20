@@ -1135,6 +1135,320 @@ const motivationalQuotes = [
       return entries;
     };
 
+    const createSeededRandom = (seed = 42) => {
+      let value = seed % 2147483647;
+      if (value <= 0) value += 2147483646;
+      return () => {
+        value = (value * 16807) % 2147483647;
+        return (value - 1) / 2147483646;
+      };
+    };
+
+    const buildDemoHistory = () => {
+      const rng = createSeededRandom(917202);
+      const today = new Date();
+      const start = new Date(today);
+      start.setDate(today.getDate() - 29);
+      const totalDays = 30;
+      const workoutDayIndices = new Set();
+      for (let weekStart = 0; weekStart < totalDays; weekStart += 7) {
+        const available = [];
+        for (let offset = 0; offset < 7; offset += 1) {
+          if (weekStart + offset < totalDays) available.push(weekStart + offset);
+        }
+        const plannedWorkouts = Math.min(available.length, 3 + Math.floor(rng() * 3));
+        const shuffled = [...available].sort(() => rng() - 0.5);
+        shuffled.slice(0, plannedWorkouts).forEach(idx => workoutDayIndices.add(idx));
+      }
+
+      const equipmentByGroup = {};
+      Object.entries(EQUIPMENT_DB).forEach(([id, eq]) => {
+        if (!eq || eq.type === 'cardio' || eq.type === 'easterEgg') return;
+        const group = resolveMuscleGroup(eq);
+        if (group === 'Other') return;
+        if (!equipmentByGroup[group]) equipmentByGroup[group] = [];
+        equipmentByGroup[group].push(id);
+      });
+
+      const muscleGroups = Object.keys(equipmentByGroup);
+      const pickFromGroup = (group, count) => {
+        const pool = equipmentByGroup[group] || [];
+        const picks = [];
+        const copy = [...pool];
+        while (copy.length > 0 && picks.length < count) {
+          const idx = Math.floor(rng() * copy.length);
+          picks.push(copy.splice(idx, 1)[0]);
+        }
+        return picks;
+      };
+
+      const buildSets = (eq) => {
+        const base = eq?.type === 'machine' ? 40 : eq?.type === 'barbell' ? 65 : eq?.type === 'dumbbell' ? 15 : 20;
+        const spread = eq?.type === 'barbell' ? 95 : 60;
+        return Array.from({ length: 3 }, () => ({
+          weight: Math.round(base + rng() * spread),
+          reps: 8 + Math.floor(rng() * 5)
+        }));
+      };
+
+      const demoHistory = {};
+      const demoCardioHistory = {};
+      const sortedDays = Array.from(workoutDayIndices).sort((a, b) => a - b);
+      sortedDays.forEach((dayIndex) => {
+        const date = new Date(start);
+        date.setDate(start.getDate() + dayIndex);
+        const timeRoll = rng();
+        if (timeRoll < 0.45) date.setHours(18 + Math.floor(rng() * 3), 10 + Math.floor(rng() * 40));
+        else if (timeRoll < 0.75) date.setHours(6 + Math.floor(rng() * 3), 5 + Math.floor(rng() * 50));
+        else date.setHours(12 + Math.floor(rng() * 3), 5 + Math.floor(rng() * 50));
+
+        const focusRoll = rng();
+        const focusGroup = focusRoll < 0.2 ? 'Legs'
+          : focusRoll < 0.38 ? 'Back'
+            : focusRoll < 0.56 ? 'Chest'
+              : focusRoll < 0.72 ? 'Shoulders'
+                : focusRoll < 0.86 ? 'Arms'
+                  : 'Core';
+
+        const exerciseCount = 3 + Math.floor(rng() * 2);
+        const exerciseIds = new Set();
+        pickFromGroup(focusGroup, Math.min(2, exerciseCount)).forEach(id => exerciseIds.add(id));
+        while (exerciseIds.size < exerciseCount) {
+          const group = muscleGroups[Math.floor(rng() * muscleGroups.length)];
+          const picks = pickFromGroup(group, 1);
+          if (picks.length > 0) exerciseIds.add(picks[0]);
+          if (exerciseIds.size >= exerciseCount) break;
+        }
+
+        exerciseIds.forEach((exerciseId) => {
+          const eq = EQUIPMENT_DB[exerciseId];
+          const session = {
+            date: date.toISOString(),
+            type: 'strength',
+            sets: buildSets(eq)
+          };
+          demoHistory[exerciseId] = [...(demoHistory[exerciseId] || []), session];
+        });
+
+        if (rng() < 0.28) {
+          const cardioId = rng() < 0.75 ? 'cardio_running' : 'cardio_swimming';
+          const cardioType = cardioId.replace('cardio_', '');
+          const minutes = 20 + Math.floor(rng() * 25);
+          const distance = cardioType === 'running' ? Number((1.5 + rng() * 3).toFixed(1)) : Math.round(600 + rng() * 900);
+          const cardioEntry = {
+            id: `${date.getTime()}-${Math.random().toString(36).slice(2, 7)}`,
+            dateISO: toDayKey(date),
+            ts: date.getTime(),
+            kind: 'cardio',
+            durationMin: minutes,
+            distance,
+            distanceUnit: cardioType === 'running' ? 'mi' : 'm',
+            effort: rng() < 0.4 ? 'easy' : rng() < 0.75 ? 'moderate' : 'hard'
+          };
+          const cardioSession = {
+            date: date.toISOString(),
+            type: 'cardio',
+            entries: [cardioEntry],
+            duration: minutes,
+            cardioLabel: EQUIPMENT_DB[cardioId]?.name || 'Cardio',
+            cardioType,
+            cardioGroup: EQUIPMENT_DB[cardioId]?.cardioGroup || null
+          };
+          demoHistory[cardioId] = [...(demoHistory[cardioId] || []), cardioSession];
+          demoCardioHistory[cardioType] = [...(demoCardioHistory[cardioType] || []), cardioSession];
+        }
+      });
+
+      return { history: demoHistory, cardioHistory: demoCardioHistory };
+    };
+
+    const getWorkoutHistoryForInsights = ({ history, cardioHistory, useDemoData, demoData }) => {
+      if (useDemoData && demoData) return demoData;
+      return { history, cardioHistory };
+    };
+
+    const buildPatternsFromHistory = (history = {}, cardioHistory = {}) => {
+      const sessions = [];
+      const seen = new Set();
+      Object.entries(history || {}).forEach(([equipId, arr]) => {
+        (arr || []).forEach(session => {
+          if (!session?.date) return;
+          const key = `${session.date}-${equipId}-${session.type || 'strength'}`;
+          if (seen.has(key)) return;
+          seen.add(key);
+          sessions.push({ ...session, equipId, type: session.type || (EQUIPMENT_DB[equipId]?.type === 'cardio' ? 'cardio' : 'strength') });
+        });
+      });
+      Object.entries(cardioHistory || {}).forEach(([cardioType, arr]) => {
+        (arr || []).forEach(session => {
+          if (!session?.date) return;
+          const key = `${session.date}-${cardioType}-cardio`;
+          if (seen.has(key)) return;
+          seen.add(key);
+          sessions.push({ ...session, equipId: `cardio_${cardioType}`, type: 'cardio' });
+        });
+      });
+
+      if (sessions.length < 4) return [];
+
+      const totalWorkoutDays = new Set(sessions.map(s => toDayKey(new Date(s.date)))).size;
+      const firstDate = sessions.reduce((min, s) => Math.min(min, new Date(s.date).getTime()), Date.now());
+      const lastDate = sessions.reduce((max, s) => Math.max(max, new Date(s.date).getTime()), 0);
+      const weeksSpan = Math.max(1, Math.round((lastDate - firstDate) / (1000 * 60 * 60 * 24 * 7)) || 1);
+      const strengthSessions = sessions.filter(s => s.type !== 'cardio');
+      const cardioSessions = sessions.filter(s => s.type === 'cardio');
+
+      const patterns = [];
+      const addPattern = (pattern) => {
+        if (!pattern?.title) return;
+        if (patterns.find(item => item.title === pattern.title)) return;
+        patterns.push(pattern);
+      };
+
+      const timeBuckets = { morning: 0, afternoon: 0, evening: 0, night: 0 };
+      sessions.forEach(s => {
+        const hour = new Date(s.date).getHours();
+        if (hour >= 5 && hour < 11) timeBuckets.morning += 1;
+        else if (hour >= 11 && hour < 17) timeBuckets.afternoon += 1;
+        else if (hour >= 17 && hour < 22) timeBuckets.evening += 1;
+        else timeBuckets.night += 1;
+      });
+      const totalSessions = sessions.length || 1;
+      const topBucket = Object.entries(timeBuckets).sort((a, b) => b[1] - a[1])[0];
+      if (topBucket && topBucket[1] / totalSessions >= 0.45) {
+        const label = topBucket[0] === 'morning' ? 'morning' : topBucket[0] === 'afternoon' ? 'midday' : topBucket[0] === 'evening' ? 'evening' : 'late night';
+        const emoji = topBucket[0] === 'morning' ? '🌤️' : topBucket[0] === 'afternoon' ? '🕛' : topBucket[0] === 'evening' ? '🌙' : '✨';
+        addPattern({ title: `You usually train in the ${label}.`, subtext: 'Your logs cluster there most often.', icon: emoji });
+      } else if (timeBuckets.morning > 0 && timeBuckets.evening > 0) {
+        addPattern({ title: 'You bounce between morning and evening sessions.', subtext: 'Your schedule stays flexible.', icon: '🧭' });
+      }
+
+      if (strengthSessions.length > 0) {
+        const groupCounts = {};
+        strengthSessions.forEach(s => {
+          const eq = EQUIPMENT_DB[s.equipId];
+          if (!eq) return;
+          const group = resolveMuscleGroup(eq);
+          groupCounts[group] = (groupCounts[group] || 0) + 1;
+        });
+        const sortedGroups = Object.entries(groupCounts).sort((a, b) => b[1] - a[1]);
+        const topGroup = sortedGroups[0]?.[0];
+        const upperGroups = ['Chest', 'Back', 'Shoulders', 'Arms'];
+        if (topGroup) {
+          const label = upperGroups.includes(topGroup) ? 'Upper body' : topGroup;
+          addPattern({ title: `${label} shows up most often.`, subtext: 'That focus keeps repeating.', icon: '🏋️' });
+        }
+
+        const legsCount = groupCounts.Legs || 0;
+        if (legsCount > 0) {
+          const legsPerWeek = legsCount / weeksSpan;
+          if (legsPerWeek >= 0.7 && legsPerWeek <= 1.4) {
+            addPattern({ title: 'Legs happen about once a week.', subtext: 'A steady lower-body rhythm.', icon: '🦵' });
+          } else if (legsPerWeek > 1.4) {
+            addPattern({ title: 'Legs show up most weeks.', subtext: 'Lower body stays in the mix.', icon: '🦵' });
+          }
+        }
+
+        const typeCounts = { machine: 0, free: 0 };
+        strengthSessions.forEach(s => {
+          const eq = EQUIPMENT_DB[s.equipId];
+          if (!eq) return;
+          if (eq.type === 'machine') typeCounts.machine += 1;
+          if (['dumbbell', 'barbell', 'kettlebell', 'bodyweight'].includes(eq.type)) typeCounts.free += 1;
+        });
+        const typeTotal = typeCounts.machine + typeCounts.free;
+        if (typeTotal > 0) {
+          const machinePct = typeCounts.machine / typeTotal;
+          const freePct = typeCounts.free / typeTotal;
+          if (machinePct >= 0.3 && freePct >= 0.3) {
+            addPattern({ title: 'You mix machines and free weights.', subtext: 'Best of both worlds.', icon: '⚙️' });
+          } else if (machinePct > 0.7) {
+            addPattern({ title: 'Machines are a go-to for you.', subtext: 'Steady, consistent loading.', icon: '🛠️' });
+          } else if (freePct > 0.7) {
+            addPattern({ title: 'Free weights lead the way.', subtext: 'Lots of variety in your lifts.', icon: '🏋️‍♀️' });
+          }
+        }
+
+        const coreDays = new Set();
+        const mixedCoreDays = new Set();
+        Object.entries(history || {}).forEach(([equipId, arr]) => {
+          const eq = EQUIPMENT_DB[equipId];
+          if (!eq) return;
+          const group = resolveMuscleGroup(eq);
+          (arr || []).forEach(s => {
+            if (!s?.date) return;
+            const key = toDayKey(new Date(s.date));
+            if (group === 'Core') coreDays.add(key);
+          });
+        });
+        Object.entries(history || {}).forEach(([equipId, arr]) => {
+          const eq = EQUIPMENT_DB[equipId];
+          if (!eq) return;
+          const group = resolveMuscleGroup(eq);
+          (arr || []).forEach(s => {
+            if (!s?.date) return;
+            const key = toDayKey(new Date(s.date));
+            if (group !== 'Core' && coreDays.has(key)) mixedCoreDays.add(key);
+          });
+        });
+        if (mixedCoreDays.size > 0 && totalWorkoutDays > 0 && mixedCoreDays.size / totalWorkoutDays >= 0.35) {
+          addPattern({ title: 'You often include core work alongside your main lifts.', subtext: 'A balanced finish.', icon: '🧘' });
+        }
+
+        const uniqueGroups = Object.keys(groupCounts).filter(group => groupCounts[group] > 0);
+        if (uniqueGroups.length >= 4) {
+          addPattern({ title: 'You rotate through multiple muscle groups.', subtext: 'Your plan stays well-rounded.', icon: '🧩' });
+        }
+      }
+
+      if (cardioSessions.length > 0) {
+        const cardioPerWeek = cardioSessions.length / weeksSpan;
+        if (cardioPerWeek >= 1) {
+          addPattern({ title: 'Cardio shows up most weeks.', subtext: 'A steady dose of conditioning.', icon: '🏃' });
+        } else {
+          addPattern({ title: 'You sprinkle in cardio sessions.', subtext: 'Just enough for balance.', icon: '🏃' });
+        }
+      }
+
+      const durations = [];
+      cardioSessions.forEach(session => {
+        if (Number.isFinite(session.duration) && session.duration > 0) durations.push(session.duration);
+        if ((session.entries || []).length > 0) {
+          session.entries.forEach(entry => {
+            if (Number.isFinite(entry.durationMin) && entry.durationMin > 0) durations.push(entry.durationMin);
+          });
+        }
+      });
+      if (durations.length >= 3) {
+        const sorted = [...durations].sort((a, b) => a - b);
+        const mid = sorted[Math.floor(sorted.length / 2)];
+        const rounded = Math.round(mid / 5) * 5;
+        addPattern({ title: `Your most common workout length is about ${rounded} minutes.`, subtext: 'A steady, repeatable window.', icon: '⏱️' });
+      }
+
+      if (totalWorkoutDays > 0) {
+        const perWeek = totalWorkoutDays / weeksSpan;
+        if (perWeek >= 4) {
+          addPattern({ title: 'You log workouts most weeks.', subtext: 'Nice, steady momentum.', icon: '📅' });
+        } else if (perWeek >= 2) {
+          addPattern({ title: 'You usually get in a couple sessions each week.', subtext: 'Solid rhythm without overthinking.', icon: '📆' });
+        }
+      }
+
+      const weekdayCount = sessions.filter(s => {
+        const day = new Date(s.date).getDay();
+        return day >= 1 && day <= 5;
+      }).length;
+      const weekendCount = sessions.length - weekdayCount;
+      if (weekdayCount / totalSessions >= 0.7) {
+        addPattern({ title: 'Weekdays are your training anchor.', subtext: 'You keep it consistent through the week.', icon: '🗓️' });
+      } else if (weekendCount / totalSessions >= 0.5) {
+        addPattern({ title: 'Weekends are your training anchor.', subtext: 'You make the most of open time.', icon: '🎯' });
+      }
+
+      return patterns.slice(0, 8);
+    };
+
     const deriveRecentExercises = (history = {}, limit = 12) => {
       const flat = [];
       Object.entries(history || {}).forEach(([id, sessions]) => {
@@ -4153,7 +4467,7 @@ const PlateCalculator = ({ targetWeight, barWeight, onClose }) => {
     };
 
     // ========== PROFILE TAB ==========
-    const ProfileView = ({ settings, setSettings, themeMode, darkVariant, setThemeMode, setDarkVariant, onViewAnalytics, onExportData, onImportData, onResetApp, onResetOnboarding }) => {
+    const ProfileView = ({ settings, setSettings, themeMode, darkVariant, setThemeMode, setDarkVariant, onViewAnalytics, onViewPatterns, onExportData, onImportData, onResetApp, onResetOnboarding }) => {
       const [workoutOpen, setWorkoutOpen] = useState(false);
       const [appearanceOpen, setAppearanceOpen] = useState(false);
       const [analyticsOpen, setAnalyticsOpen] = useState(false);
@@ -4190,6 +4504,19 @@ const PlateCalculator = ({ targetWeight, barWeight, onClose }) => {
           </div>
 
           <div className="flex-1 overflow-y-auto p-4 pb-24 space-y-4">
+            <Card className="space-y-3">
+              <button onClick={onViewPatterns} className="w-full flex items-center justify-between text-left">
+                <div>
+                  <div className="text-xs font-bold text-gray-500 uppercase">Patterns</div>
+                  <div className="text-sm text-gray-500">Friendly signals from your history</div>
+                </div>
+                <div className="flex items-center gap-2 text-sm font-semibold text-purple-600">
+                  <span>Open</span>
+                  <Icon name="ChevronRight" className="w-4 h-4" />
+                </div>
+              </button>
+            </Card>
+
             <Card className="space-y-3">
               <button
                 onClick={() => setAppearanceOpen(prev => !prev)}
@@ -4293,6 +4620,17 @@ const PlateCalculator = ({ targetWeight, barWeight, onClose }) => {
             </Card>
 
             <Card className="space-y-3">
+              <div className="text-xs font-bold text-gray-500 uppercase">Developer Options</div>
+              <ToggleRow
+                icon="BarChart"
+                title="Use Demo Data (30 days)"
+                subtitle="Preview analytics and patterns with seeded data"
+                enabled={settings.useDemoData}
+                onToggle={(next) => setSettings({ ...settings, useDemoData: next })}
+              />
+            </Card>
+
+            <Card className="space-y-3">
               <button
                 onClick={() => setLearnOpen(prev => !prev)}
                 className="w-full flex items-center justify-between text-left"
@@ -4383,6 +4721,53 @@ const PlateCalculator = ({ targetWeight, barWeight, onClose }) => {
               )}
             </Card>
 
+          </div>
+        </div>
+      );
+    };
+
+    const PatternsScreen = ({ history, cardioHistory, onClose }) => {
+      const patterns = useMemo(() => buildPatternsFromHistory(history, cardioHistory), [history, cardioHistory]);
+
+      return (
+        <div className="patterns-screen flex flex-col h-full bg-gray-50">
+          <div className="bg-white border-b border-gray-100 sticky top-0 z-10" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
+            <div className="p-4 flex items-center gap-3">
+              <button onClick={onClose} className="p-2 rounded-full bg-gray-100">
+                <Icon name="ChevronLeft" className="w-5 h-5 text-gray-700" />
+              </button>
+              <div>
+                <div className="text-xs font-bold text-gray-500 uppercase">Profile</div>
+                <div className="text-lg font-black text-gray-900">Patterns</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex-1 overflow-y-auto p-4 pb-24 space-y-3">
+            <div className="pattern-intro bg-white rounded-2xl border border-gray-200 p-4 shadow-sm">
+              <div className="text-sm font-semibold text-gray-900">Gentle insights from your recent training.</div>
+              <div className="text-xs text-gray-500">These update as you keep logging sessions.</div>
+            </div>
+
+            {patterns.length === 0 ? (
+              <div className="bg-white rounded-2xl border border-gray-200 p-6 text-center text-gray-600">
+                <div className="text-3xl mb-2">🌱</div>
+                <div className="text-sm font-semibold text-gray-900 mb-2">No patterns yet</div>
+                <div className="text-sm text-gray-500">As you log sessions, this fills in with patterns you can actually use.</div>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {patterns.map((pattern, idx) => (
+                  <div key={`${pattern.title}-${idx}`} className="pattern-card">
+                    <div className="pattern-icon">{pattern.icon || '✨'}</div>
+                    <div className="flex-1">
+                      <div className="pattern-title">{pattern.title}</div>
+                      {pattern.subtext && <div className="pattern-subtext">{pattern.subtext}</div>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       );
@@ -5027,7 +5412,7 @@ const CardioLogger = ({ id, onClose, onUpdateSessionLogs, sessionLogs, history, 
         onboarded: false
       });
 
-      const [settings, setSettings] = useState({ insightsEnabled: true, smartSuggestionsEnabled: true, darkMode: false, darkAccent: 'purple', showAllExercises: false, pinnedExercises: [], workoutViewMode: 'all', suggestedWorkoutCollapsed: true });
+      const [settings, setSettings] = useState({ insightsEnabled: true, smartSuggestionsEnabled: true, darkMode: false, darkAccent: 'purple', showAllExercises: false, pinnedExercises: [], workoutViewMode: 'all', suggestedWorkoutCollapsed: true, useDemoData: false });
       const [themeMode, setThemeModeState] = useState('light');
       const [darkVariant, setDarkVariantState] = useState('blue');
       const [history, setHistory] = useState({});
@@ -5038,6 +5423,7 @@ const CardioLogger = ({ id, onClose, onUpdateSessionLogs, sessionLogs, history, 
       const [pendingAutoFocusExercise, setPendingAutoFocusExercise] = useState(null);
       const [view, setView] = useState('onboarding');
       const [showAnalytics, setShowAnalytics] = useState(false);
+      const [showPatterns, setShowPatterns] = useState(false);
       const [showMatrix, setShowMatrix] = useState(false);
       const [showPowerUp, setShowPowerUp] = useState(false);
       const [showGlory, setShowGlory] = useState(false);
@@ -5181,7 +5567,7 @@ const CardioLogger = ({ id, onClose, onUpdateSessionLogs, sessionLogs, history, 
       useEffect(() => {
         const savedOnboarding = storage.get(ONBOARDING_KEY, false);
         const savedProfileRaw = storage.get('ps_v2_profile', null);
-        const settingsDefaults = { insightsEnabled: true, smartSuggestionsEnabled: true, darkMode: false, darkAccent: 'purple', showAllExercises: false, pinnedExercises: [], workoutViewMode: 'all', suggestedWorkoutCollapsed: true };
+        const settingsDefaults = { insightsEnabled: true, smartSuggestionsEnabled: true, darkMode: false, darkAccent: 'purple', showAllExercises: false, pinnedExercises: [], workoutViewMode: 'all', suggestedWorkoutCollapsed: true, useDemoData: false };
         const savedSettings = storage.get('ps_v2_settings', settingsDefaults);
         const savedHistory = storage.get('ps_v2_history', {});
         const savedCardio = storage.get('ps_v2_cardio', {});
@@ -5433,6 +5819,19 @@ const CardioLogger = ({ id, onClose, onUpdateSessionLogs, sessionLogs, history, 
         applyTheme();
       }, []);
 
+      const demoInsightsData = useMemo(() => buildDemoHistory(), []);
+      const insightsData = useMemo(() => getWorkoutHistoryForInsights({
+        history,
+        cardioHistory,
+        useDemoData: settings.useDemoData,
+        demoData: demoInsightsData
+      }), [history, cardioHistory, settings.useDemoData, demoInsightsData]);
+      const insightsHistory = insightsData.history;
+      const insightsCardioHistory = insightsData.cardioHistory;
+      const insightsDayEntries = useMemo(() => (
+        settings.useDemoData ? buildDayEntriesFromHistory(insightsHistory, insightsCardioHistory, appState?.restDays || []) : dayEntries
+      ), [settings.useDemoData, insightsHistory, insightsCardioHistory, appState?.restDays, dayEntries]);
+
       const todayWorkoutType = useMemo(() => getTodaysWorkoutType(history, appState), [history, appState]);
 
       const strengthScoreObj = useMemo(() => {
@@ -5440,15 +5839,15 @@ const CardioLogger = ({ id, onClose, onUpdateSessionLogs, sessionLogs, history, 
           return { score: 0, avgPct: 0, coveragePct: 0, loggedCount: 0, total: Object.keys(EQUIPMENT_DB).length };
         }
         if (!profile?.onboarded) return { score: 0, avgPct: 0, coveragePct: 0, loggedCount: 0, total: Object.keys(EQUIPMENT_DB).length };
-        return computeStrengthScore(profile, history);
-      }, [profile, history, showAnalytics]);
+        return computeStrengthScore(profile, insightsHistory);
+      }, [profile, insightsHistory, showAnalytics]);
 
-      const streakObj = useMemo(() => computeStreak(history, cardioHistory, appState?.restDays || [], dayEntries), [history, cardioHistory, appState?.restDays, dayEntries]);
+      const streakObj = useMemo(() => computeStreak(insightsHistory, insightsCardioHistory, appState?.restDays || [], insightsDayEntries), [insightsHistory, insightsCardioHistory, appState?.restDays, insightsDayEntries]);
 
       const achievements = useMemo(() => {
         if (!showAnalytics) return [];
-        return computeAchievements({ history, cardioHistory, strengthScoreObj, streakObj });
-      }, [history, cardioHistory, strengthScoreObj, streakObj, showAnalytics]);
+        return computeAchievements({ history: insightsHistory, cardioHistory: insightsCardioHistory, strengthScoreObj, streakObj });
+      }, [insightsHistory, insightsCardioHistory, strengthScoreObj, streakObj, showAnalytics]);
 
       const lastWorkoutDate = useMemo(() => getLastWorkoutDate(history, cardioHistory), [history, cardioHistory]);
 
@@ -6504,14 +6903,21 @@ return (
                     <div className="flex-1 overflow-y-auto">
                       <Progress
                         profile={profile}
-                        history={history}
+                        history={insightsHistory}
                         strengthScoreObj={strengthScoreObj}
-                        cardioHistory={cardioHistory}
+                        cardioHistory={insightsCardioHistory}
                       />
                     </div>
                   </div>
                 </div>
-                <div className={`page ${!showAnalytics && tab === 'home' ? 'active' : ''}`} aria-hidden={showAnalytics || tab !== 'home'}>
+                <div className={`page ${showPatterns ? 'active' : ''}`} aria-hidden={!showPatterns}>
+                  <PatternsScreen
+                    history={insightsHistory}
+                    cardioHistory={insightsCardioHistory}
+                    onClose={() => setShowPatterns(false)}
+                  />
+                </div>
+                <div className={`page ${!showAnalytics && !showPatterns && tab === 'home' ? 'active' : ''}`} aria-hidden={showAnalytics || showPatterns || tab !== 'home'}>
                   <Home
                     profile={profile}
                     lastWorkoutLabel={lastWorkoutLabel}
@@ -6538,7 +6944,7 @@ return (
                     onLongPressRestDay={() => setShowButDidYouDie(true)}
                   />
                 </div>
-                <div className={`page ${!showAnalytics && tab === 'workout' ? 'active' : ''}`} aria-hidden={showAnalytics || tab !== 'workout'}>
+                <div className={`page ${!showAnalytics && !showPatterns && tab === 'workout' ? 'active' : ''}`} aria-hidden={showAnalytics || showPatterns || tab !== 'workout'}>
                   <Workout
                     profile={profile}
                     onSelectExercise={handleSelectExercise}
@@ -6563,7 +6969,7 @@ return (
                     sessionIntent={sessionIntent}
                   />
                 </div>
-                <div className={`page ${!showAnalytics && tab === 'profile' ? 'active' : ''}`} aria-hidden={showAnalytics || tab !== 'profile'}>
+                <div className={`page ${!showAnalytics && !showPatterns && tab === 'profile' ? 'active' : ''}`} aria-hidden={showAnalytics || showPatterns || tab !== 'profile'}>
                   <ProfileView
                     settings={settings}
                     setSettings={setSettings}
@@ -6571,7 +6977,14 @@ return (
                     darkVariant={darkVariant}
                     setThemeMode={setThemeMode}
                     setDarkVariant={setDarkVariant}
-                    onViewAnalytics={() => setShowAnalytics(true)}
+                    onViewAnalytics={() => {
+                      setShowPatterns(false);
+                      setShowAnalytics(true);
+                    }}
+                    onViewPatterns={() => {
+                      setShowAnalytics(false);
+                      setShowPatterns(true);
+                    }}
                     onExportData={handleExportData}
                     onImportData={handleImportData}
                     onResetApp={handleReset}
@@ -6581,7 +6994,7 @@ return (
               </div>
             </div>
 
-            {!showAnalytics && <TabBar currentTab={tab} setTab={setTab} onWorkoutTripleTap={() => setShowSpartan(true)} />}
+            {!showAnalytics && !showPatterns && <TabBar currentTab={tab} setTab={setTab} onWorkoutTripleTap={() => setShowSpartan(true)} />}
 
             {activeEquipment && (
               <EquipmentDetail
