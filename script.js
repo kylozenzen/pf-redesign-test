@@ -4972,8 +4972,10 @@ const CardioLogger = ({ id, onClose, onUpdateSessionLogs, sessionLogs, history, 
       const [sessionStartNotice, setSessionStartNotice] = useState(null);
       const sessionStartTimerRef = useRef(null);
       const [showPostWorkout, setShowPostWorkout] = useState(false);
+      const [showPostWorkoutCelebration, setShowPostWorkoutCelebration] = useState(false);
       const [postWorkoutQuote, setPostWorkoutQuote] = useState(null);
       const postWorkoutTimerRef = useRef(null);
+      const postWorkoutCelebrationRef = useRef(null);
       const rageTapRef = useRef(new Map());
 
       const [appState, setAppState] = useState({
@@ -5666,6 +5668,9 @@ const CardioLogger = ({ id, onClose, onUpdateSessionLogs, sessionLogs, history, 
         const chosenQuote = getRandomQuote(postWorkoutQuotes);
         setPostWorkoutQuote(chosenQuote);
         setShowPostWorkout(true);
+        setShowPostWorkoutCelebration(true);
+        if (postWorkoutCelebrationRef.current) clearTimeout(postWorkoutCelebrationRef.current);
+        postWorkoutCelebrationRef.current = setTimeout(() => setShowPostWorkoutCelebration(false), 720);
         if (postWorkoutTimerRef.current) clearTimeout(postWorkoutTimerRef.current);
         postWorkoutTimerRef.current = setTimeout(() => setShowPostWorkout(false), 3600);
         setTab('home');
@@ -6380,7 +6385,10 @@ return (
               <UndoToast message={undoToast?.message} onUndo={handleUndoAction} />
               {showPostWorkout && (
                 <div className="post-workout-screen" onClick={() => setShowPostWorkout(false)}>
-                  <div className="post-workout-card" onClick={(e) => e.stopPropagation()}>
+                  <div
+                    className={`post-workout-card ${showPostWorkoutCelebration ? 'post-workout-celebrate' : ''}`}
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     <div className="post-workout-header">
                       <div className="text-xs font-bold text-gray-400 uppercase">Session</div>
                       <button className="post-workout-close" onClick={() => setShowPostWorkout(false)}>

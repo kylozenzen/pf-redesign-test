@@ -486,6 +486,29 @@ body.app-shell {
   box-shadow: var(--shadow-card-strong), inset 0 1px 0 var(--hairline);
 }
 
+.post-workout-celebrate {
+  animation: postWorkoutGlow 720ms ease-out;
+}
+
+@keyframes postWorkoutGlow {
+  0% {
+    box-shadow: var(--shadow-card-strong), inset 0 1px 0 var(--hairline);
+  }
+  40% {
+    box-shadow: 0 18px 40px color-mix(in srgb, var(--accent) 24%, transparent),
+      inset 0 1px 0 var(--hairline);
+  }
+  100% {
+    box-shadow: var(--shadow-card-strong), inset 0 1px 0 var(--hairline);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .post-workout-celebrate {
+    animation: none;
+  }
+}
+
 .post-workout-header {
   display: flex;
   align-items: center;
