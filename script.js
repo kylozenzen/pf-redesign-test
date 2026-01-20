@@ -2010,6 +2010,7 @@ const Home = ({
   profile,
   lastWorkoutLabel,
   suggestedFocus,
+  dayEntries,
   onStartWorkout,
   onGenerate,
   homeQuote,
@@ -2085,6 +2086,23 @@ const Home = ({
       ? 'Draft a recovery session in seconds.'
       : 'Draft a session in seconds.';
 
+  const weekSummary = useMemo(() => {
+    const today = new Date();
+    const days = [];
+    for (let i = 6; i >= 0; i -= 1) {
+      const date = new Date(today);
+      date.setDate(today.getDate() - i);
+      const key = toDayKey(date);
+      const entry = dayEntries?.[key];
+      const count = entry?.workoutCount ?? entry?.count ?? (entry?.type === 'workout' ? 1 : 0);
+      const label = date.toLocaleDateString('en-US', { weekday: 'short' }).slice(0, 1);
+      days.push({ key, count, label });
+    }
+    const total = days.reduce((sum, day) => sum + day.count, 0);
+    const maxCount = Math.max(0, ...days.map(day => day.count));
+    return { days, total, maxCount };
+  }, [dayEntries]);
+
   return (
     <div className="flex flex-col h-full bg-gray-50 home-screen">
       <div className="bg-white border-b border-gray-100 sticky top-0 z-20" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
@@ -2122,8 +2140,28 @@ const Home = ({
               <div className="text-lg font-black text-gray-900">{lastWorkoutLabel || 'No logs yet'}</div>
             </div>
             <div className="home-mini-card">
-              <div className="text-xs uppercase text-gray-400 font-bold">Suggested focus</div>
-              <div className="text-lg font-black text-gray-900">{suggestedFocus}</div>
+              <div className="weekly-activity-header">
+                <div className="weekly-activity-title">This Week</div>
+                <div className="weekly-activity-total">{weekSummary.total} workouts</div>
+              </div>
+              <div className="weekly-activity-bars">
+                {weekSummary.days.map(day => (
+                  <div key={day.key} className="weekly-activity-bar-column">
+                    <div className="weekly-activity-bar-track">
+                      <div
+                        className="weekly-activity-bar"
+                        style={{
+                          height: `${weekSummary.maxCount === 0 ? 6 : Math.max(6, Math.round((day.count / weekSummary.maxCount) * 48))}px`
+                        }}
+                      />
+                    </div>
+                    <div className="weekly-activity-day-label">{day.label}</div>
+                  </div>
+                ))}
+              </div>
+              {suggestedFocus && (
+                <div className="weekly-activity-focus">Suggested focus: {suggestedFocus}</div>
+              )}
             </div>
           </div>
           <div className="home-section-card">
@@ -6432,6 +6470,7 @@ return (
                     profile={profile}
                     lastWorkoutLabel={lastWorkoutLabel}
                     suggestedFocus={suggestedFocus}
+                    dayEntries={dayEntries}
                     onStartWorkout={handleStartWorkout}
                     onGenerate={(label) => {
                       const map = {
