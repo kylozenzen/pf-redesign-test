@@ -2320,15 +2320,54 @@ const Workout = ({ profile, onSelectExercise, settings, setSettings, pinnedExerc
     return '🏋️‍♂️';
   };
 
+  const MUSCLE_GROUP_CATEGORY_MAP = {
+    chest: 'chest',
+    pecs: 'chest',
+    'upper chest': 'chest',
+    back: 'back',
+    'upper back': 'back',
+    'lower back': 'back',
+    lats: 'back',
+    traps: 'back',
+    legs: 'legs',
+    quads: 'legs',
+    quadriceps: 'legs',
+    hamstrings: 'legs',
+    glutes: 'legs',
+    calves: 'legs',
+    'inner thighs': 'legs',
+    adductors: 'legs',
+    core: 'core',
+    abs: 'core',
+    obliques: 'core',
+    biceps: 'arms',
+    triceps: 'arms',
+    forearms: 'arms',
+    brachialis: 'arms',
+    shoulders: 'shoulders',
+    delts: 'shoulders',
+    'front delts': 'shoulders',
+    'side delts': 'shoulders'
+  };
+
+  const resolveCategoryClass = (label = '') => {
+    if (!label) return '';
+    const primary = `${label}`.split(',')[0].trim().toLowerCase();
+    if (!primary) return '';
+    const normalizedCategory = MUSCLE_GROUP_CATEGORY_MAP[primary] || null;
+    return normalizedCategory ? `category-${normalizedCategory}` : '';
+  };
+
   const renderExerciseRow = (id, actionLabel = 'Add', onAction) => {
     const eq = EQUIPMENT_DB[id];
     if (!eq) return null;
     const isComingSoon = !!eq.comingSoon;
     const allowAdd = hasTodayWorkout && !isRestDay && !isComingSoon;
+    const categoryClass = resolveCategoryClass(eq.target || eq.muscles || '');
     return (
       <div
         key={id}
-        className="w-full p-3 rounded-xl border border-gray-200 bg-white flex items-center justify-between"
+        className={`w-full p-3 rounded-xl border border-gray-200 bg-white flex items-center justify-between ${categoryClass}`}
       >
         <div className="flex items-center gap-3 text-left">
           <div className="w-10 h-10 rounded-lg workout-chip flex items-center justify-center text-lg">
@@ -2380,8 +2419,9 @@ const Workout = ({ profile, onSelectExercise, settings, setSettings, pinnedExerc
     const typeIcon = getExerciseIcon(eq);
     const isComingSoon = !!eq.comingSoon;
     const allowAdd = hasTodayWorkout && !isRestDay && !isComingSoon;
+    const categoryClass = resolveCategoryClass(eq.target || eq.muscles || '');
     return (
-      <div key={id} className="tile text-left">
+      <div key={id} className={`tile text-left ${categoryClass}`}>
         <div className="flex items-center justify-between mb-1">
           <div className="text-lg">{typeIcon}</div>
           <span className="text-[11px] workout-muted">{eq.type === 'cardio' ? 'Cardio' : eq.target}</span>
@@ -2618,11 +2658,12 @@ const Workout = ({ profile, onSelectExercise, settings, setSettings, pinnedExerc
                 {sessionEntries.map((entry, idx) => {
                   const entryId = entry.exerciseId || entry.id;
                   const entrySetCount = (sessionLogsByExercise[entryId] || []).length;
+                  const categoryClass = resolveCategoryClass(entry.muscleGroup || EQUIPMENT_DB[entryId]?.target || '');
                   return (
                   <div
                     key={entryId}
                     onClick={mode === 'active' ? () => onSelectExercise(entryId, 'session') : undefined}
-                    className="session-entry-row"
+                    className={`session-entry-row ${categoryClass}`}
                     role={mode === 'active' ? 'button' : undefined}
                     tabIndex={mode === 'active' ? 0 : undefined}
                     onKeyDown={mode === 'active' ? (e) => { if (e.key === 'Enter') onSelectExercise(entryId, 'session'); } : undefined}
@@ -3734,9 +3775,10 @@ const PlateCalculator = ({ targetWeight, barWeight, onClose }) => {
                           const sets = isCardio ? 0 : (session.sets || []).length;
                           const cardioLabel = isCardio ? (session.cardioLabel || eq?.name || 'Cardio') : null;
                           const durationLabel = isCardio ? (session.duration ? `${session.duration} min` : `${(session.entries || []).length} entries`) : null;
+                          const categoryClass = isCardio ? '' : resolveCategoryClass(eq?.target || '');
 
                           return (
-                            <div key={idx} className="p-3 bg-gray-50 rounded-lg border border-gray-100">
+                            <div key={idx} className={`p-3 bg-gray-50 rounded-lg border border-gray-100 ${categoryClass}`}>
                               <div className="flex items-center justify-between mb-2">
                                 <div className="flex items-center gap-2">
                                   <div className="text-xl">{isCardio ? (eq?.emoji || '🏃') : eq?.type === 'machine' ? '⚙️' : eq?.type === 'dumbbell' ? '🏋️' : '🏋️‍♂️'}</div>
@@ -3822,8 +3864,9 @@ const PlateCalculator = ({ targetWeight, barWeight, onClose }) => {
                           const eq = EQUIPMENT_DB[id];
                           const sessions = (history[id] || []).slice(-6).reverse();
                           const isExpanded = exerciseHistoryExpanded === id;
+                          const categoryClass = resolveCategoryClass(eq?.target || '');
                           return (
-                            <div key={id} className={`exercise-history-card ${isExpanded ? 'expanded' : ''}`}>
+                            <div key={id} className={`exercise-history-card ${categoryClass} ${isExpanded ? 'expanded' : ''}`}>
                               <button
                                 onClick={() => setExerciseHistoryExpanded(isExpanded ? null : id)}
                                 className="exercise-history-toggle"
