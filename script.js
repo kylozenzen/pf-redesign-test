@@ -339,6 +339,81 @@ const { useState, useEffect, useMemo, useRef, useCallback } = React;
       return counts;
     };
 
+    const MUSCLE_BADGE_CONFIG = {
+      chest: {
+        tint: 'var(--tint-chest)',
+        icon: <path d="M3 12h4l2 6 4-12 3 9h5" />
+      },
+      back: {
+        tint: 'var(--tint-back)',
+        icon: <path d="M12 3 4.5 6.5V12c0 4.5 3.3 8.6 7.5 9 4.2-.4 7.5-4.5 7.5-9V6.5L12 3Z" />
+      },
+      legs: {
+        tint: 'var(--tint-legs)',
+        icon: <path d="M6 4v8l4 4 4-4V4M10 16l-2 4M14 16l2 4" />
+      },
+      core: {
+        tint: 'var(--tint-core)',
+        icon: <path d="M5 7h14M5 12h14M5 17h14" />
+      },
+      arms: {
+        tint: 'var(--tint-arms)',
+        icon: <path d="M4 12h3l1-3h8l1 3h3M6 12v4M18 12v4" />
+      },
+      shoulders: {
+        tint: 'var(--tint-shoulders)',
+        icon: <path d="M12 3v4M12 17v4M3 12h4M17 12h4M7 7l2 2M15 7l-2 2M7 17l2-2M15 17l-2-2" />
+      }
+    };
+
+    const renderMuscleBadge = (muscleGroup) => {
+      const key = resolveMuscleKey(muscleGroup) || `${muscleGroup || ''}`.toLowerCase();
+      const config = MUSCLE_BADGE_CONFIG[key];
+      if (!config) return null;
+      return (
+        <span className="muscle-badge" style={{ '--badge-tint': config.tint }}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            {config.icon}
+          </svg>
+        </span>
+      );
+    };
+
+    const getLastWorkedDateForGroup = (muscleGroup, history = {}, exerciseMeta = {}) => {
+      if (!muscleGroup) return null;
+      const target = `${muscleGroup}`.toLowerCase();
+      let latest = null;
+      Object.entries(exerciseMeta || {}).forEach(([id, meta]) => {
+        if (!meta || meta.type === 'cardio' || meta.type === 'easterEgg') return;
+        const group = resolveMuscleGroup(meta);
+        if (!group || group.toLowerCase() !== target) return;
+        safeArray(history?.[id]).forEach(session => {
+          if (!session?.date) return;
+          const time = new Date(session.date).getTime();
+          if (!Number.isFinite(time)) return;
+          if (!latest || time > latest.getTime()) {
+            latest = new Date(time);
+          }
+        });
+      });
+      return latest;
+    };
+
+    const formatLastWorkedLabel = (lastDate, now = new Date()) => {
+      if (!lastDate) {
+        return 'Not logged yet';
+      }
+      const msPerDay = 24 * 60 * 60 * 1000;
+      const nowDate = now instanceof Date ? now : new Date(now);
+      const diffDays = Math.floor((nowDate - lastDate) / msPerDay);
+      if (diffDays <= 7) {
+        const weekday = lastDate.toLocaleDateString(undefined, { weekday: 'short' });
+        return `Last worked • ${weekday}`;
+      }
+      const dateStr = lastDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+      return `Last worked • ${dateStr}`;
+    };
+
     const getLastWorkoutDate = (history = {}, cardioHistory = {}) => {
       const dates = [];
       Object.values(history || {}).forEach(arr => {
@@ -2437,6 +2512,7 @@ const Home = ({
   suggestedFocus,
   dayEntries,
   lastWorkoutDate,
+  history,
   onStartWorkout,
   onGenerate,
   homeQuote,
@@ -2572,6 +2648,15 @@ const Home = ({
     return welcomeBackMessages[Math.floor(Math.random() * welcomeBackMessages.length)];
   }, []);
 
+  const muscleGroups = useMemo(() => ([
+    { label: 'Chest', key: 'chest' },
+    { label: 'Back', key: 'back' },
+    { label: 'Legs', key: 'legs' },
+    { label: 'Core', key: 'core' },
+    { label: 'Arms', key: 'arms' },
+    { label: 'Shoulders', key: 'shoulders' }
+  ]), []);
+
   return (
     <div className="flex flex-col h-full bg-gray-50 home-screen">
       <div className="bg-white border-b border-gray-100 sticky top-0 z-20" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
@@ -2634,6 +2719,21 @@ const Home = ({
                 </>
               )}
             </div>
+          </div>
+          <div className="home-card-row no-scrollbar">
+            {muscleGroups.map(group => {
+              const lastDate = getLastWorkedDateForGroup(group.label, history, EQUIPMENT_DB);
+              const label = formatLastWorkedLabel(lastDate);
+              return (
+                <div key={group.key} className="home-mini-card home-muscle-card">
+                  <div className="home-muscle-card-title">
+                    {renderMuscleBadge(group.label)}
+                    <span>{group.label}</span>
+                  </div>
+                  <div className="muscle-card-subtext">{label}</div>
+                </div>
+              );
+            })}
           </div>
           <div className="home-section-card">
             <div className="home-section-title">Start Today</div>
@@ -7205,6 +7305,7 @@ return (
                     suggestedFocus={suggestedFocus}
                     dayEntries={effectiveDayEntries}
                     lastWorkoutDate={lastWorkoutDate}
+                    history={effectiveHistory}
                     onStartWorkout={handleStartWorkout}
                     onGenerate={(label) => {
                       const map = {
