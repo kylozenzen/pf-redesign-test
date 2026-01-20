@@ -300,12 +300,14 @@ const { useState, useEffect, useMemo, useRef, useCallback } = React;
     const getLastWorkoutDate = (history = {}, cardioHistory = {}) => {
       const dates = [];
       Object.values(history || {}).forEach(arr => {
-        (arr || []).forEach(s => {
+        if (!Array.isArray(arr)) return;
+        arr.forEach(s => {
           if (s?.date) dates.push(new Date(s.date));
         });
       });
       Object.values(cardioHistory || {}).forEach(arr => {
-        (arr || []).forEach(s => {
+        if (!Array.isArray(arr)) return;
+        arr.forEach(s => {
           if (s?.date) dates.push(new Date(s.date));
         });
       });
@@ -1068,13 +1070,15 @@ const motivationalQuotes = [
       const keys = new Set();
       // Add workout days
       Object.values(history || {}).forEach(arr => {
-        (arr || []).forEach(s => {
+        if (!Array.isArray(arr)) return;
+        arr.forEach(s => {
           if (s?.date) keys.add(toDayKey(new Date(s.date)));
         });
       });
       // Add cardio days
       Object.values(cardioHistory || {}).forEach(arr => {
-        (arr || []).forEach(s => {
+        if (!Array.isArray(arr)) return;
+        arr.forEach(s => {
           if (s?.date) keys.add(toDayKey(new Date(s.date)));
         });
       });
@@ -1116,14 +1120,16 @@ const motivationalQuotes = [
     const buildDayEntriesFromHistory = (history = {}, cardioHistory = {}, restDays = []) => {
       const entries = {};
       Object.values(history || {}).forEach(arr => {
-        (arr || []).forEach(s => {
+        if (!Array.isArray(arr)) return;
+        arr.forEach(s => {
           if (!s?.date) return;
           const key = toDayKey(new Date(s.date));
           entries[key] = entries[key] || { type: 'workout', date: key, exercises: [] };
         });
       });
       Object.values(cardioHistory || {}).forEach(arr => {
-        (arr || []).forEach(s => {
+        if (!Array.isArray(arr)) return;
+        arr.forEach(s => {
           if (!s?.date) return;
           const key = toDayKey(new Date(s.date));
           entries[key] = entries[key] || { type: 'workout', date: key, exercises: [] };
@@ -1144,12 +1150,12 @@ const motivationalQuotes = [
       };
     };
 
-    const buildDemoHistory = () => {
+    const generateDemoData = (days = 30) => {
       const rng = createSeededRandom(917202);
       const today = new Date();
       const start = new Date(today);
-      start.setDate(today.getDate() - 29);
-      const totalDays = 30;
+      start.setDate(today.getDate() - (days - 1));
+      const totalDays = Math.max(7, days);
       const workoutDayIndices = new Set();
       for (let weekStart = 0; weekStart < totalDays; weekStart += 7) {
         const available = [];
@@ -1183,16 +1189,17 @@ const motivationalQuotes = [
       };
 
       const buildSets = (eq) => {
-        const base = eq?.type === 'machine' ? 40 : eq?.type === 'barbell' ? 65 : eq?.type === 'dumbbell' ? 15 : 20;
-        const spread = eq?.type === 'barbell' ? 95 : 60;
+        const base = eq?.type === 'machine' ? 35 : eq?.type === 'barbell' ? 65 : eq?.type === 'dumbbell' ? 15 : 20;
+        const spread = eq?.type === 'barbell' ? 95 : 55;
         return Array.from({ length: 3 }, () => ({
-          weight: Math.round(base + rng() * spread),
-          reps: 8 + Math.floor(rng() * 5)
+          weight: Math.max(5, Math.round(base + rng() * spread)),
+          reps: 6 + Math.floor(rng() * 7)
         }));
       };
 
-      const demoHistory = {};
-      const demoCardioHistory = {};
+      const history = {};
+      const cardioHistory = {};
+      const restDays = [];
       const sortedDays = Array.from(workoutDayIndices).sort((a, b) => a - b);
       sortedDays.forEach((dayIndex) => {
         const date = new Date(start);
@@ -1210,7 +1217,7 @@ const motivationalQuotes = [
                 : focusRoll < 0.86 ? 'Arms'
                   : 'Core';
 
-        const exerciseCount = 3 + Math.floor(rng() * 2);
+        const exerciseCount = 3 + Math.floor(rng() * 3);
         const exerciseIds = new Set();
         pickFromGroup(focusGroup, Math.min(2, exerciseCount)).forEach(id => exerciseIds.add(id));
         while (exerciseIds.size < exerciseCount) {
@@ -1224,54 +1231,122 @@ const motivationalQuotes = [
           const eq = EQUIPMENT_DB[exerciseId];
           const session = {
             date: date.toISOString(),
-            type: 'strength',
-            sets: buildSets(eq)
+            sets: buildSets(eq),
+            notes: rng() < 0.18 ? 'Felt steady today.' : undefined
           };
-          demoHistory[exerciseId] = [...(demoHistory[exerciseId] || []), session];
+          history[exerciseId] = [...(history[exerciseId] || []), session];
         });
 
-        if (rng() < 0.28) {
-          const cardioId = rng() < 0.75 ? 'cardio_running' : 'cardio_swimming';
-          const cardioType = cardioId.replace('cardio_', '');
-          const minutes = 20 + Math.floor(rng() * 25);
-          const distance = cardioType === 'running' ? Number((1.5 + rng() * 3).toFixed(1)) : Math.round(600 + rng() * 900);
-          const cardioEntry = {
-            id: `${date.getTime()}-${Math.random().toString(36).slice(2, 7)}`,
-            dateISO: toDayKey(date),
-            ts: date.getTime(),
-            kind: 'cardio',
-            durationMin: minutes,
-            distance,
-            distanceUnit: cardioType === 'running' ? 'mi' : 'm',
-            effort: rng() < 0.4 ? 'easy' : rng() < 0.75 ? 'moderate' : 'hard'
-          };
-          const cardioSession = {
+        if (rng() < 0.32) {
+          const cardioType = rng() < 0.7 ? 'running' : 'swimming';
+          const duration = 18 + Math.floor(rng() * 28);
+          const distance = cardioType === 'running' ? Number((1.2 + rng() * 3.4).toFixed(1)) : Math.round(500 + rng() * 1200);
+          const intensity = rng() < 0.4 ? 'easy' : rng() < 0.75 ? 'moderate' : 'strong';
+          const session = {
             date: date.toISOString(),
-            type: 'cardio',
-            entries: [cardioEntry],
-            duration: minutes,
-            cardioLabel: EQUIPMENT_DB[cardioId]?.name || 'Cardio',
-            cardioType,
-            cardioGroup: EQUIPMENT_DB[cardioId]?.cardioGroup || null
+            duration,
+            distance,
+            intensity
           };
-          demoHistory[cardioId] = [...(demoHistory[cardioId] || []), cardioSession];
-          demoCardioHistory[cardioType] = [...(demoCardioHistory[cardioType] || []), cardioSession];
+          cardioHistory[cardioType] = [...(cardioHistory[cardioType] || []), session];
         }
       });
 
-      return { history: demoHistory, cardioHistory: demoCardioHistory };
+      const dayEntries = buildDayEntriesFromHistory(history, cardioHistory, restDays);
+      return { history, cardioHistory, restDays, dayEntries };
     };
 
-    const getWorkoutHistoryForInsights = ({ history, cardioHistory, useDemoData, demoData }) => {
-      if (useDemoData && demoData) return demoData;
-      return { history, cardioHistory };
+    const normalizeHistory = (obj) => {
+      const safe = {};
+      if (!obj || typeof obj !== 'object') return safe;
+      Object.entries(obj).forEach(([key, value]) => {
+        if (!Array.isArray(value)) {
+          safe[key] = [];
+          return;
+        }
+        const entries = value
+          .filter(item => item && typeof item === 'object' && !Array.isArray(item))
+          .filter(item => item.date)
+          .map(item => {
+            const sets = Array.isArray(item.sets)
+              ? item.sets
+                .filter(set => set && typeof set === 'object')
+                .map(set => ({
+                  reps: Number(set.reps),
+                  weight: Number(set.weight)
+                }))
+                .filter(set => Number.isFinite(set.reps) && Number.isFinite(set.weight))
+              : [];
+            return { ...item, sets };
+          });
+        safe[key] = entries;
+      });
+      return safe;
+    };
+
+    const normalizeCardioHistory = (obj) => {
+      const safe = {};
+      if (!obj || typeof obj !== 'object') return safe;
+      Object.entries(obj).forEach(([key, value]) => {
+        if (!Array.isArray(value)) {
+          safe[key] = [];
+          return;
+        }
+        const entries = value
+          .filter(item => item && typeof item === 'object' && !Array.isArray(item))
+          .filter(item => item.date)
+          .map(item => ({
+            ...item,
+            duration: Number(item.duration),
+            distance: item.distance !== undefined && item.distance !== null ? Number(item.distance) : undefined,
+            intensity: item.intensity || item.effort || null
+          }))
+          .filter(item => Number.isFinite(item.duration) && item.duration > 0);
+        safe[key] = entries;
+      });
+      return safe;
+    };
+
+    const normalizeDayEntries = (obj, history, cardioHistory, restDays) => {
+      if (!obj || typeof obj !== 'object') {
+        return buildDayEntriesFromHistory(history, cardioHistory, restDays);
+      }
+      const entries = {};
+      Object.entries(obj).forEach(([key, value]) => {
+        if (!value || typeof value !== 'object') return;
+        entries[key] = {
+          type: value.type || 'workout',
+          date: value.date || key,
+          exercises: Array.isArray(value.exercises) ? value.exercises.filter(Boolean) : []
+        };
+      });
+      return Object.keys(entries).length > 0 ? entries : buildDayEntriesFromHistory(history, cardioHistory, restDays);
+    };
+
+    let demoDataCache = null;
+    const getEffectiveData = (realData, demoEnabled) => {
+      const base = realData || {};
+      const source = demoEnabled
+        ? (demoDataCache || (demoDataCache = generateDemoData(30)))
+        : {
+          history: base.history,
+          cardioHistory: base.cardioHistory,
+          restDays: base.restDays,
+          dayEntries: base.dayEntries
+        };
+      const history = normalizeHistory(source.history);
+      const cardioHistory = normalizeCardioHistory(source.cardioHistory);
+      const restDays = Array.isArray(source.restDays) ? source.restDays.filter(Boolean) : [];
+      const dayEntries = normalizeDayEntries(source.dayEntries, history, cardioHistory, restDays);
+      return { history, cardioHistory, restDays, dayEntries };
     };
 
     const buildPatternsFromHistory = (history = {}, cardioHistory = {}) => {
       const sessions = [];
       const seen = new Set();
       Object.entries(history || {}).forEach(([equipId, arr]) => {
-        (arr || []).forEach(session => {
+        if (!Array.isArray(arr)) return;
+        arr.forEach(session => {
           if (!session?.date) return;
           const key = `${session.date}-${equipId}-${session.type || 'strength'}`;
           if (seen.has(key)) return;
@@ -1280,7 +1355,8 @@ const motivationalQuotes = [
         });
       });
       Object.entries(cardioHistory || {}).forEach(([cardioType, arr]) => {
-        (arr || []).forEach(session => {
+        if (!Array.isArray(arr)) return;
+        arr.forEach(session => {
           if (!session?.date) return;
           const key = `${session.date}-${cardioType}-cardio`;
           if (seen.has(key)) return;
@@ -1375,7 +1451,7 @@ const motivationalQuotes = [
           const eq = EQUIPMENT_DB[equipId];
           if (!eq) return;
           const group = resolveMuscleGroup(eq);
-          (arr || []).forEach(s => {
+          (Array.isArray(arr) ? arr : []).forEach(s => {
             if (!s?.date) return;
             const key = toDayKey(new Date(s.date));
             if (group === 'Core') coreDays.add(key);
@@ -1385,7 +1461,7 @@ const motivationalQuotes = [
           const eq = EQUIPMENT_DB[equipId];
           if (!eq) return;
           const group = resolveMuscleGroup(eq);
-          (arr || []).forEach(s => {
+          (Array.isArray(arr) ? arr : []).forEach(s => {
             if (!s?.date) return;
             const key = toDayKey(new Date(s.date));
             if (group !== 'Core' && coreDays.has(key)) mixedCoreDays.add(key);
@@ -1413,7 +1489,7 @@ const motivationalQuotes = [
       const durations = [];
       cardioSessions.forEach(session => {
         if (Number.isFinite(session.duration) && session.duration > 0) durations.push(session.duration);
-        if ((session.entries || []).length > 0) {
+        if (Array.isArray(session.entries) && session.entries.length > 0) {
           session.entries.forEach(entry => {
             if (Number.isFinite(entry.durationMin) && entry.durationMin > 0) durations.push(entry.durationMin);
           });
@@ -1452,7 +1528,7 @@ const motivationalQuotes = [
     const deriveRecentExercises = (history = {}, limit = 12) => {
       const flat = [];
       Object.entries(history || {}).forEach(([id, sessions]) => {
-        (sessions || []).forEach(s => {
+        (Array.isArray(sessions) ? sessions : []).forEach(s => {
           if (s?.date) flat.push({ id, date: s.date });
         });
       });
@@ -1471,8 +1547,8 @@ const motivationalQuotes = [
     const deriveUsageCountsFromHistory = (history = {}) => {
       const counts = {};
       Object.entries(history || {}).forEach(([id, sessions]) => {
-        (sessions || []).forEach(s => {
-          const increment = Math.max(1, (s?.sets || []).length);
+        (Array.isArray(sessions) ? sessions : []).forEach(s => {
+          const increment = Math.max(1, Array.isArray(s?.sets) ? s.sets.length : 0);
           counts[id] = (counts[id] || 0) + increment;
         });
       });
@@ -1546,7 +1622,7 @@ const motivationalQuotes = [
       let easyCount = 0, goodCount = 0, hardCount = 0, atBest = 0;
 
       recentSessions.forEach(session => {
-        (session.sets || []).forEach(set => {
+        (Array.isArray(session.sets) ? session.sets : []).forEach(set => {
           if (set.weight === currentBest) {
             atBest++;
             if (set.difficulty === 'easy') easyCount++;
@@ -1816,7 +1892,7 @@ const OnboardingFlow = ({ profile, setProfile, onFinish }) => {
     const getBestForEquipment = (sessions = []) => {
       let best = 0;
       sessions.forEach(s => {
-        (s.sets || []).forEach(set => { if (set.weight > best) best = set.weight; });
+        (Array.isArray(s.sets) ? s.sets : []).forEach(set => { if (set.weight > best) best = set.weight; });
       });
       return best || null;
     };
@@ -1837,14 +1913,14 @@ const OnboardingFlow = ({ profile, setProfile, onFinish }) => {
 
     const computeStrengthScore = (_profile, history) => {
       const ids = Object.keys(EQUIPMENT_DB).filter(id => EQUIPMENT_DB[id]?.type !== 'cardio');
-      const logged = ids.filter(id => (history[id] || []).length > 0);
+      const logged = ids.filter(id => Array.isArray(history[id]) && history[id].length > 0);
 
       if (logged.length === 0) {
         return { score: 0, avgPct: 0, coveragePct: 0, loggedCount: 0, total: ids.length };
       }
 
       const ratios = logged.map(id => {
-        const sessions = history[id] || [];
+        const sessions = Array.isArray(history[id]) ? history[id] : [];
         if (sessions.length === 0) return 0;
         const first = sessions[0];
         const best = getBestForEquipment(sessions);
@@ -1865,10 +1941,10 @@ const OnboardingFlow = ({ profile, setProfile, onFinish }) => {
 
     const computeAchievements = ({ history, cardioHistory = {}, strengthScoreObj, streakObj }) => {
       const days = uniqueDayKeysFromHistory(history, cardioHistory);
-      const strengthSessions = Object.values(history || {}).reduce((sum, arr) => sum + (arr?.length || 0), 0);
-      const cardioSessions = Object.values(cardioHistory || {}).reduce((sum, arr) => sum + (arr?.length || 0), 0);
+      const strengthSessions = Object.values(history || {}).reduce((sum, arr) => sum + (Array.isArray(arr) ? arr.length : 0), 0);
+      const cardioSessions = Object.values(cardioHistory || {}).reduce((sum, arr) => sum + (Array.isArray(arr) ? arr.length : 0), 0);
       const sessionsTotal = strengthSessions + cardioSessions;
-      const equipmentLogged = Object.keys(EQUIPMENT_DB).filter(id => (history[id] || []).length > 0).length;
+      const equipmentLogged = Object.keys(EQUIPMENT_DB).filter(id => Array.isArray(history[id]) && history[id].length > 0).length;
 
       const unlocks = [
         { id: 'first', title: 'First Log', desc: 'Logged your first session', unlocked: sessionsTotal >= 1, emoji: '✅' },
@@ -3381,8 +3457,8 @@ const PlateCalculator = ({ targetWeight, barWeight, onClose }) => {
 
       const deriveSessionAnchor = (session) => {
         if (!session) return { weight: null, reps: null };
-        const weights = (session.sets || []).map(s => s.weight || 0).filter(Boolean);
-        const reps = (session.sets || []).map(s => s.reps || 0).filter(Boolean);
+        const weights = (Array.isArray(session.sets) ? session.sets : []).map(s => s.weight || 0).filter(Boolean);
+        const reps = (Array.isArray(session.sets) ? session.sets : []).map(s => s.reps || 0).filter(Boolean);
         return {
           weight: session.anchorWeight || (weights.length ? Math.max(...weights) : null),
           reps: session.anchorReps || (reps.length ? Math.round(reps.reduce((a, b) => a + b, 0) / reps.length) : null)
@@ -4034,7 +4110,9 @@ const PlateCalculator = ({ targetWeight, barWeight, onClose }) => {
         const sessions = [];
         const seen = new Set();
         Object.entries(history || {}).forEach(([equipId, arr]) => {
-          (arr || []).forEach(s => {
+          if (!Array.isArray(arr)) return;
+          arr.forEach(s => {
+            if (!s || typeof s !== 'object') return;
             const cardioType = s.type === 'cardio' ? (s.cardioType || equipId.replace('cardio_', '')) : null;
             const cardioLabel = s.type === 'cardio' ? (s.cardioLabel || EQUIPMENT_DB[equipId]?.name || 'Cardio') : null;
             const id = s.type === 'cardio'
@@ -4046,7 +4124,9 @@ const PlateCalculator = ({ targetWeight, barWeight, onClose }) => {
           });
         });
         Object.entries(cardioHistory || {}).forEach(([cardioType, arr]) => {
-          (arr || []).forEach(s => {
+          if (!Array.isArray(arr)) return;
+          arr.forEach(s => {
+            if (!s || typeof s !== 'object') return;
             const id = `${s.date}-${s.cardioType || cardioType}-cardio`;
             if (seen.has(id)) return;
             seen.add(id);
@@ -4056,15 +4136,15 @@ const PlateCalculator = ({ targetWeight, barWeight, onClose }) => {
         return sessions;
       }, [history, cardioHistory]);
 
-      const equipmentWithHistory = allEquipment.filter(id => (history[id] || []).length > 0).length;
+      const equipmentWithHistory = allEquipment.filter(id => Array.isArray(history[id]) && history[id].length > 0).length;
 
       const MiniChart = ({ equipId }) => {
-        const sessions = history[equipId] || [];
+        const sessions = Array.isArray(history[equipId]) ? history[equipId] : [];
         if (sessions.length < 2) return <p className="text-sm text-gray-400 text-center py-8">Log at least 2 sessions to chart progress</p>;
 
         const dataPoints = sessions.map(s => {
           let maxWeight = 0;
-          (s.sets || []).forEach(set => { if (set.weight > maxWeight) maxWeight = set.weight; });
+          (Array.isArray(s.sets) ? s.sets : []).forEach(set => { if (set.weight > maxWeight) maxWeight = set.weight; });
           return { date: new Date(s.date), weight: maxWeight };
         }).filter(d => d.weight > 0).slice(-10);
 
@@ -4170,9 +4250,9 @@ const PlateCalculator = ({ targetWeight, barWeight, onClose }) => {
                         {sortedSessions.map((session, idx) => {
                           const isCardio = session.type === 'cardio';
                           const eq = EQUIPMENT_DB[session.equipId];
-                          const sets = isCardio ? 0 : (session.sets || []).length;
+                          const sets = isCardio ? 0 : (Array.isArray(session.sets) ? session.sets.length : 0);
                           const cardioLabel = isCardio ? (session.cardioLabel || eq?.name || 'Cardio') : null;
-                          const durationLabel = isCardio ? (session.duration ? `${session.duration} min` : `${(session.entries || []).length} entries`) : null;
+                          const durationLabel = isCardio ? (session.duration ? `${session.duration} min` : `${Array.isArray(session.entries) ? session.entries.length : 0} entries`) : null;
                           const categoryClass = isCardio ? '' : resolveCategoryClass(eq?.target || '');
 
                           return (
@@ -4201,7 +4281,7 @@ const PlateCalculator = ({ targetWeight, barWeight, onClose }) => {
                               
                               {isCardio ? (
                                 <div className="text-xs text-gray-600">
-                                  {(session.entries || []).slice(0, 2).map((entry, i) => {
+                                  {(Array.isArray(session.entries) ? session.entries : []).slice(0, 2).map((entry, i) => {
                                     const entryDuration = entry.durationMin || entry.minutes;
                                     const durationLabel = entryDuration ? `${entryDuration} min` : 'Time logged';
                                     const entryUnit = entry.distanceUnit || (entry.poolType === '25m' || entry.poolType === '50m' ? 'm' : entry.poolType === '25yd' ? 'yd' : '');
@@ -4212,13 +4292,13 @@ const PlateCalculator = ({ targetWeight, barWeight, onClose }) => {
                                       </div>
                                     );
                                   })}
-                                  {(session.entries || []).length > 2 && (
+                                  {(Array.isArray(session.entries) ? session.entries.length : 0) > 2 && (
                                     <div className="text-[11px] text-gray-400">+{session.entries.length - 2} more entries</div>
                                   )}
                                 </div>
                               ) : (
                                 <div className="grid grid-cols-4 gap-1 mt-2">
-                                  {(session.sets || []).map((set, i) => (
+                                  {(Array.isArray(session.sets) ? session.sets : []).map((set, i) => (
                                     <div key={i} className="text-center p-1 bg-white rounded border border-gray-100">
                                       <div className="text-xs font-bold text-gray-900">{set.weight}</div>
                                       <div className="text-[10px] text-gray-500">×{set.reps}</div>
@@ -4251,7 +4331,7 @@ const PlateCalculator = ({ targetWeight, barWeight, onClose }) => {
                     className="w-full px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm font-semibold"
                   />
                   {(() => {
-                    const withHistory = allEquipment.filter(id => (history[id] || []).length > 0);
+                    const withHistory = allEquipment.filter(id => Array.isArray(history[id]) && history[id].length > 0);
                     const filtered = withHistory.filter(id => (EQUIPMENT_DB[id]?.name || '').toLowerCase().includes(exerciseHistoryQuery.toLowerCase()));
                     if (filtered.length === 0) {
                       return <div className="text-sm text-gray-500 text-center py-4">No exercises match yet.</div>;
@@ -4260,7 +4340,7 @@ const PlateCalculator = ({ targetWeight, barWeight, onClose }) => {
                       <div className="exercise-history-grid">
                         {filtered.map(id => {
                           const eq = EQUIPMENT_DB[id];
-                          const sessions = (history[id] || []).slice(-6).reverse();
+                          const sessions = (Array.isArray(history[id]) ? history[id] : []).slice(-6).reverse();
                           const isExpanded = exerciseHistoryExpanded === id;
                           const categoryClass = resolveCategoryClass(eq?.target || '');
                           return (
@@ -4282,13 +4362,13 @@ const PlateCalculator = ({ targetWeight, barWeight, onClose }) => {
                                   ) : (
                                     <div className="space-y-2">
                                       {sessions.map((session, idx) => {
-                                        const summary = (session.sets || []).map(set => `${set.reps}×${set.weight}`).join(', ');
+                                        const summary = (Array.isArray(session.sets) ? session.sets : []).map(set => `${set.reps}×${set.weight}`).join(', ');
                                         return (
                                           <div key={idx} className="p-2 rounded-lg border border-gray-200 bg-white">
                                             <div className="text-[11px] font-bold text-gray-900">
                                               {new Date(session.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                                             </div>
-                                            <div className="text-[10px] text-gray-500">{(session.sets || []).length} sets</div>
+                                            <div className="text-[10px] text-gray-500">{Array.isArray(session.sets) ? session.sets.length : 0} sets</div>
                                             <div className="text-[11px] text-gray-700">{summary || 'No sets logged.'}</div>
                                           </div>
                                         );
@@ -4372,7 +4452,7 @@ const PlateCalculator = ({ targetWeight, barWeight, onClose }) => {
                         {recentSessions.map((session, idx) => {
                           const isCardio = session.type === 'cardio';
                           const eq = EQUIPMENT_DB[session.equipId];
-                          const setCount = isCardio ? null : (session.sets || []).length;
+                          const setCount = isCardio ? null : (Array.isArray(session.sets) ? session.sets.length : 0);
                           return (
                             <div key={idx} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg border border-gray-100">
                               <div className="flex items-center gap-2">
@@ -4386,7 +4466,7 @@ const PlateCalculator = ({ targetWeight, barWeight, onClose }) => {
                               </div>
                               {isCardio ? (
                                 <div className="text-right">
-                                  <div className="text-xs font-bold text-purple-600">{session.duration ? `${session.duration} min` : `${(session.entries || []).length} entries`}</div>
+                                  <div className="text-xs font-bold text-purple-600">{session.duration ? `${session.duration} min` : `${Array.isArray(session.entries) ? session.entries.length : 0} entries`}</div>
                                 </div>
                               ) : (
                                 <div className="text-right">
@@ -4406,9 +4486,9 @@ const PlateCalculator = ({ targetWeight, barWeight, onClose }) => {
                 <Card>
                   <h3 className="font-bold text-gray-900 mb-3">Exercise Progress</h3>
                   <div className="space-y-2">
-                    {allEquipment.filter(id => (history[id] || []).length > 0).slice(0, 5).map(id => {
+                    {allEquipment.filter(id => Array.isArray(history[id]) && history[id].length > 0).slice(0, 5).map(id => {
                       const eq = EQUIPMENT_DB[id];
-                      const sessions = history[id] || [];
+                      const sessions = Array.isArray(history[id]) ? history[id] : [];
                       const sessionCount = sessions.length;
                       const bar = Math.min(100, Math.max(10, sessionCount * 12));
                       return (
@@ -4441,7 +4521,7 @@ const PlateCalculator = ({ targetWeight, barWeight, onClose }) => {
                 
                 {(() => {
                   const eq = EQUIPMENT_DB[selectedEquipment];
-                  const sessions = history[selectedEquipment] || [];
+                  const sessions = Array.isArray(history[selectedEquipment]) ? history[selectedEquipment] : [];
                   if (sessions.length === 0) {
                     return (
                       <div className="text-center py-8">
@@ -5819,37 +5899,35 @@ const CardioLogger = ({ id, onClose, onUpdateSessionLogs, sessionLogs, history, 
         applyTheme();
       }, []);
 
-      const demoInsightsData = useMemo(() => buildDemoHistory(), []);
-      const insightsData = useMemo(() => getWorkoutHistoryForInsights({
+      const effectiveData = useMemo(() => getEffectiveData({
         history,
         cardioHistory,
-        useDemoData: settings.useDemoData,
-        demoData: demoInsightsData
-      }), [history, cardioHistory, settings.useDemoData, demoInsightsData]);
-      const insightsHistory = insightsData.history;
-      const insightsCardioHistory = insightsData.cardioHistory;
-      const insightsDayEntries = useMemo(() => (
-        settings.useDemoData ? buildDayEntriesFromHistory(insightsHistory, insightsCardioHistory, appState?.restDays || []) : dayEntries
-      ), [settings.useDemoData, insightsHistory, insightsCardioHistory, appState?.restDays, dayEntries]);
+        restDays: appState?.restDays || [],
+        dayEntries
+      }, settings.useDemoData), [history, cardioHistory, appState?.restDays, dayEntries, settings.useDemoData]);
+      const effectiveHistory = effectiveData.history;
+      const effectiveCardioHistory = effectiveData.cardioHistory;
+      const effectiveRestDays = effectiveData.restDays;
+      const effectiveDayEntries = effectiveData.dayEntries;
 
-      const todayWorkoutType = useMemo(() => getTodaysWorkoutType(history, appState), [history, appState]);
+      const todayWorkoutType = useMemo(() => getTodaysWorkoutType(effectiveHistory, appState), [effectiveHistory, appState]);
 
       const strengthScoreObj = useMemo(() => {
         if (!showAnalytics) {
           return { score: 0, avgPct: 0, coveragePct: 0, loggedCount: 0, total: Object.keys(EQUIPMENT_DB).length };
         }
         if (!profile?.onboarded) return { score: 0, avgPct: 0, coveragePct: 0, loggedCount: 0, total: Object.keys(EQUIPMENT_DB).length };
-        return computeStrengthScore(profile, insightsHistory);
-      }, [profile, insightsHistory, showAnalytics]);
+        return computeStrengthScore(profile, effectiveHistory);
+      }, [profile, effectiveHistory, showAnalytics]);
 
-      const streakObj = useMemo(() => computeStreak(insightsHistory, insightsCardioHistory, appState?.restDays || [], insightsDayEntries), [insightsHistory, insightsCardioHistory, appState?.restDays, insightsDayEntries]);
+      const streakObj = useMemo(() => computeStreak(effectiveHistory, effectiveCardioHistory, effectiveRestDays, effectiveDayEntries), [effectiveHistory, effectiveCardioHistory, effectiveRestDays, effectiveDayEntries]);
 
       const achievements = useMemo(() => {
         if (!showAnalytics) return [];
-        return computeAchievements({ history: insightsHistory, cardioHistory: insightsCardioHistory, strengthScoreObj, streakObj });
-      }, [insightsHistory, insightsCardioHistory, strengthScoreObj, streakObj, showAnalytics]);
+        return computeAchievements({ history: effectiveHistory, cardioHistory: effectiveCardioHistory, strengthScoreObj, streakObj });
+      }, [effectiveHistory, effectiveCardioHistory, strengthScoreObj, streakObj, showAnalytics]);
 
-      const lastWorkoutDate = useMemo(() => getLastWorkoutDate(history, cardioHistory), [history, cardioHistory]);
+      const lastWorkoutDate = useMemo(() => getLastWorkoutDate(effectiveHistory, effectiveCardioHistory), [effectiveHistory, effectiveCardioHistory]);
 
       const lastWorkoutLabel = useMemo(() => {
         if (!lastWorkoutDate) return null;
@@ -5868,10 +5946,10 @@ const CardioLogger = ({ id, onClose, onUpdateSessionLogs, sessionLogs, history, 
           const day = new Date(today);
           day.setDate(today.getDate() - i);
           const key = toDayKey(day);
-          if (dayEntries?.[key]?.type === 'workout') count += 1;
+          if (effectiveDayEntries?.[key]?.type === 'workout') count += 1;
         }
         return count;
-      }, [dayEntries]);
+      }, [effectiveDayEntries]);
 
       const recordDayEntry = (dayKey, type = 'workout', extras = {}) => {
         setDayEntries(prev => {
@@ -5905,7 +5983,7 @@ const CardioLogger = ({ id, onClose, onUpdateSessionLogs, sessionLogs, history, 
       const todayKey = toDayKey(new Date());
       const activeSessionToday = activeSession?.date === todayKey ? activeSession : null;
       const draftPlanToday = draftPlan?.date === todayKey ? draftPlan : null;
-      const restDayDates = Array.isArray(appState?.restDays) ? appState.restDays : [];
+      const restDayDates = Array.isArray(effectiveRestDays) ? effectiveRestDays : [];
       const isRestDay = restDayDates.includes(todayKey);
       const sessionIntent = useMemo(() => {
         if (isRestDay) return 'recovery';
@@ -5915,21 +5993,21 @@ const CardioLogger = ({ id, onClose, onUpdateSessionLogs, sessionLogs, history, 
       const homeQuote = useMemo(() => getDailyQuote(homeQuotes, 'home'), [todayKey]);
       const suggestedFocus = useMemo(() => {
         const muscleGroups = ['Chest', 'Back', 'Legs', 'Shoulders', 'Arms', 'Core'];
-        const workoutDays = Object.entries(dayEntries || {})
+        const workoutDays = Object.entries(effectiveDayEntries || {})
           .filter(([, entry]) => entry?.type === 'workout')
           .sort((a, b) => new Date(b[0]) - new Date(a[0]))
           .slice(0, 2);
         if (workoutDays.length === 0) return 'Full Body';
         const used = new Set();
         workoutDays.forEach(([, entry]) => {
-          (entry.exercises || []).forEach(id => {
+          (Array.isArray(entry.exercises) ? entry.exercises : []).forEach(id => {
             const group = resolveMuscleGroup(EQUIPMENT_DB[id]);
             if (group) used.add(group);
           });
         });
         const remaining = muscleGroups.filter(group => !used.has(group));
         return remaining[0] || 'Full Body';
-      }, [dayEntries]);
+      }, [effectiveDayEntries]);
 
       useEffect(() => {
         if (!isRestDay) return;
@@ -5952,7 +6030,7 @@ const CardioLogger = ({ id, onClose, onUpdateSessionLogs, sessionLogs, history, 
           }
           
           const hasAllWorkouts = last7Days.every(dayKey => {
-            const entry = dayEntries[dayKey];
+            const entry = effectiveDayEntries[dayKey];
             return entry && entry.type === 'workout';
           });
           
@@ -5966,7 +6044,7 @@ const CardioLogger = ({ id, onClose, onUpdateSessionLogs, sessionLogs, history, 
         };
         
         checkPerfectWeek();
-      }, [dayEntries, todayKey]);
+      }, [effectiveDayEntries, todayKey]);
 
       const createEmptySession = (overrides = {}) => ({
         date: todayKey,
@@ -6555,7 +6633,7 @@ const CardioLogger = ({ id, onClose, onUpdateSessionLogs, sessionLogs, history, 
           sets: [...(session.sets || [])]
         };
         const sessionDay = toDayKey(new Date(session.date));
-        const previousSessions = history[id] || [];
+        const previousSessions = Array.isArray(history[id]) ? history[id] : [];
         const lastSession = previousSessions[previousSessions.length - 1];
         const lastMaxWeight = lastSession?.sets?.length ? Math.max(...lastSession.sets.map(s => s.weight || 0)) : null;
         const lastTotalReps = lastSession?.sets?.length ? lastSession.sets.reduce((sum, s) => sum + (s.reps || 0), 0) : null;
@@ -6903,17 +6981,17 @@ return (
                     <div className="flex-1 overflow-y-auto">
                       <Progress
                         profile={profile}
-                        history={insightsHistory}
+                        history={effectiveHistory}
                         strengthScoreObj={strengthScoreObj}
-                        cardioHistory={insightsCardioHistory}
+                        cardioHistory={effectiveCardioHistory}
                       />
                     </div>
                   </div>
                 </div>
                 <div className={`page ${showPatterns ? 'active' : ''}`} aria-hidden={!showPatterns}>
                   <PatternsScreen
-                    history={insightsHistory}
-                    cardioHistory={insightsCardioHistory}
+                    history={effectiveHistory}
+                    cardioHistory={effectiveCardioHistory}
                     onClose={() => setShowPatterns(false)}
                   />
                 </div>
@@ -6922,7 +7000,7 @@ return (
                     profile={profile}
                     lastWorkoutLabel={lastWorkoutLabel}
                     suggestedFocus={suggestedFocus}
-                    dayEntries={dayEntries}
+                    dayEntries={effectiveDayEntries}
                     lastWorkoutDate={lastWorkoutDate}
                     onStartWorkout={handleStartWorkout}
                     onGenerate={(label) => {
@@ -6997,13 +7075,13 @@ return (
             {!showAnalytics && !showPatterns && <TabBar currentTab={tab} setTab={setTab} onWorkoutTripleTap={() => setShowSpartan(true)} />}
 
             {activeEquipment && (
-              <EquipmentDetail
-                id={activeEquipment}
-                profile={profile}
-                history={history[activeEquipment] || []}
-                onSave={handleSaveSession}
-                onUpdateSessionLogs={updateSessionLogs}
-                sessionLogs={activeSessionToday?.logsByExercise?.[activeEquipment] || []}
+                <EquipmentDetail
+                  id={activeEquipment}
+                  profile={profile}
+                  history={Array.isArray(effectiveHistory[activeEquipment]) ? effectiveHistory[activeEquipment] : []}
+                  onSave={handleSaveSession}
+                  onUpdateSessionLogs={updateSessionLogs}
+                  sessionLogs={activeSessionToday?.logsByExercise?.[activeEquipment] || []}
                 onRequestUndo={showUndoToast}
                 onShowToast={showToast}
                 autoFocusInput={pendingAutoFocusExercise === activeEquipment}
@@ -7020,7 +7098,7 @@ return (
                 id={activeCardio}
                 onUpdateSessionLogs={updateSessionLogs}
                 sessionLogs={activeSessionToday?.logsByExercise?.[activeCardio] || []}
-                history={history[activeCardio] || []}
+                history={Array.isArray(effectiveHistory[activeCardio]) ? effectiveHistory[activeCardio] : []}
                 settings={settings}
                 onClose={() => setActiveCardio(null)}
               />
