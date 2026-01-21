@@ -3035,9 +3035,7 @@ const Workout = ({ profile, history, cardioHistory, colorfulExerciseCards, onSel
     const isComingSoon = !!eq.comingSoon;
     const allowAdd = hasTodayWorkout && !isRestDay && !isComingSoon;
     const categoryClass = colorfulExerciseCards ? resolveCategoryClass(eq.target || eq.muscles || '') : '';
-    const badgeGroup = colorfulExerciseCards ? normalizeMuscleGroup(eq) : 'other';
-    const lastUsedDate = getLastUsedDateForExercise(id, history, cardioHistory);
-    const lastUsedLabel = formatDaysAgo(lastUsedDate);
+    const badgeGroup = normalizeMuscleGroup(eq);
     return (
       <div
         key={id}
@@ -3076,9 +3074,7 @@ const Workout = ({ profile, history, cardioHistory, colorfulExerciseCards, onSel
     const isComingSoon = !!eq.comingSoon;
     const allowAdd = hasTodayWorkout && !isRestDay && !isComingSoon;
     const categoryClass = colorfulExerciseCards ? resolveCategoryClass(eq.target || eq.muscles || '') : '';
-    const badgeGroup = colorfulExerciseCards ? normalizeMuscleGroup(eq) : 'other';
-    const lastUsedDate = getLastUsedDateForExercise(id, history, cardioHistory);
-    const lastUsedLabel = formatDaysAgo(lastUsedDate);
+    const badgeGroup = normalizeMuscleGroup(eq);
     return (
       <div key={id} className={`tile text-left exercise-library-card ${categoryClass}`}>
         <div className="flex items-center justify-between mb-1">
@@ -3582,7 +3578,6 @@ const PlateCalculator = ({ targetWeight, barWeight, onClose }) => {
       const [anchorWeight, setAnchorWeight] = useState('');
       const [anchorReps, setAnchorReps] = useState('');
       const [anchorAdjusted, setAnchorAdjusted] = useState(false);
-      const [showAdjust, setShowAdjust] = useState(false);
       const [loggedSets, setLoggedSets] = useState([]);
       const [setInputs, setSetInputs] = useState({ weight: '', reps: '' });
       const [editingIndex, setEditingIndex] = useState(null);
@@ -3654,7 +3649,6 @@ const PlateCalculator = ({ targetWeight, barWeight, onClose }) => {
         setAnchorWeight(weight);
         setAnchorReps(reps);
         setAnchorAdjusted(false);
-        setShowAdjust(false);
         setNote('');
         setSetInputs({ weight: '', reps: '' });
         setBaselineInputs({
@@ -3971,34 +3965,26 @@ const PlateCalculator = ({ targetWeight, barWeight, onClose }) => {
                                     </div>
                                     {anchorAdjusted && <div className="text-[11px] workout-accent-text font-semibold">Adjusted today</div>}
                                   </div>
-                                  <button
-                                    onClick={() => setShowAdjust(v => !v)}
-                                    className="px-3 py-2 rounded-lg bg-white border workout-accent-border workout-accent-text font-bold active:scale-95 text-xs"
-                                  >
-                                    {showAdjust ? 'Done' : 'Adjust'}
-                                  </button>
                                 </div>
 
-                                {showAdjust && (
-                                  <div className="grid grid-cols-2 gap-2">
-                                    <input
-                                      type="number"
-                                      inputMode="numeric"
-                                      value={anchorWeight}
-                                      onChange={(e) => { setAnchorWeight(e.target.value); setAnchorAdjusted(true); }}
-                                      placeholder="lbs"
-                                      className="w-full p-3 rounded-xl border-2 workout-accent-border bg-white font-black text-center text-gray-900 workout-accent-focus outline-none"
-                                    />
-                                    <input
-                                      type="number"
-                                      inputMode="numeric"
-                                      value={anchorReps}
-                                      onChange={(e) => { setAnchorReps(e.target.value); setAnchorAdjusted(true); }}
-                                      placeholder="reps"
-                                      className="w-full p-3 rounded-xl border-2 workout-accent-border bg-white font-black text-center text-gray-900 workout-accent-focus outline-none"
-                                    />
-                                  </div>
-                                )}
+                                <div className="grid grid-cols-2 gap-2">
+                                  <input
+                                    type="number"
+                                    inputMode="numeric"
+                                    value={anchorWeight}
+                                    onChange={(e) => { setAnchorWeight(e.target.value); setAnchorAdjusted(true); }}
+                                    placeholder="lbs"
+                                    className="w-full p-3 rounded-xl border-2 workout-accent-border bg-white font-black text-center text-gray-900 workout-accent-focus outline-none"
+                                  />
+                                  <input
+                                    type="number"
+                                    inputMode="numeric"
+                                    value={anchorReps}
+                                    onChange={(e) => { setAnchorReps(e.target.value); setAnchorAdjusted(true); }}
+                                    placeholder="reps"
+                                    className="w-full p-3 rounded-xl border-2 workout-accent-border bg-white font-black text-center text-gray-900 workout-accent-focus outline-none"
+                                  />
+                                </div>
 
                                 <div className="flex items-center justify-between text-sm font-semibold text-gray-900">
                                   <span>Sets completed: {loggedSets.length}</span>
