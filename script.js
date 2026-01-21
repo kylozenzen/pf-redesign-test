@@ -286,26 +286,46 @@ const { useState, useEffect, useMemo, useRef, useCallback } = React;
       return pool[Math.floor(Math.random() * pool.length)];
     };
 
-    const resolveMuscleGroup = (eq) => {
-      const target = (eq?.target || '').toLowerCase();
-      if (target.includes('chest') || target.includes('pec')) return 'Chest';
-      if (target.includes('back') || target.includes('lat')) return 'Back';
-      if (target.includes('leg') || target.includes('quad') || target.includes('hamstring') || target.includes('glute') || target.includes('calf') || target.includes('thigh')) return 'Legs';
-      if (target.includes('shoulder') || target.includes('delt')) return 'Shoulders';
-      if (target.includes('bicep') || target.includes('tricep') || target.includes('arm') || target.includes('forearm')) return 'Arms';
-      if (target.includes('core') || target.includes('ab')) return 'Core';
-      return 'Other';
-    };
-
-    const resolveMuscleKey = (label = '') => {
-      const value = label.toLowerCase();
+    const normalizeMuscleGroup = (raw) => {
+      if (!raw) return 'other';
+      const type = typeof raw === 'string' ? null : raw?.type;
+      if (type === 'cardio') return 'cardio';
+      const value = typeof raw === 'string'
+        ? raw.toLowerCase()
+        : `${raw?.target || raw?.muscles || raw?.muscleGroup || raw?.name || ''}`.toLowerCase();
+      if (!value) return 'other';
+      if (value.includes('full body') || value.includes('fullbody')) return 'fullbody';
       if (value.includes('chest') || value.includes('pec')) return 'chest';
-      if (value.includes('back') || value.includes('lat')) return 'back';
+      if (value.includes('back') || value.includes('lat') || value.includes('trap')) return 'back';
       if (value.includes('leg') || value.includes('quad') || value.includes('hamstring') || value.includes('glute') || value.includes('calf') || value.includes('thigh')) return 'legs';
       if (value.includes('shoulder') || value.includes('delt')) return 'shoulders';
-      if (value.includes('bicep') || value.includes('tricep') || value.includes('arm') || value.includes('forearm')) return 'arms';
-      if (value.includes('core') || value.includes('ab')) return 'core';
-      return null;
+      if (value.includes('bicep') || value.includes('tricep') || value.includes('arm') || value.includes('forearm') || value.includes('brach')) return 'arms';
+      if (value.includes('core') || value.includes('ab') || value.includes('oblique')) return 'core';
+      return 'other';
+    };
+
+    const resolveMuscleGroup = (raw) => {
+      const normalized = normalizeMuscleGroup(raw);
+      switch (normalized) {
+        case 'chest':
+          return 'Chest';
+        case 'back':
+          return 'Back';
+        case 'legs':
+          return 'Legs';
+        case 'core':
+          return 'Core';
+        case 'arms':
+          return 'Arms';
+        case 'shoulders':
+          return 'Shoulders';
+        case 'cardio':
+          return 'Cardio';
+        case 'fullbody':
+          return 'Full Body';
+        default:
+          return 'Other';
+      }
     };
 
     const buildMuscleDistribution = (history = {}, rangeDays = 30) => {
@@ -327,16 +347,128 @@ const { useState, useEffect, useMemo, useRef, useCallback } = React;
           if (!session?.date) return;
           const time = new Date(session.date).getTime();
           if (!Number.isFinite(time) || time < cutoff.getTime()) return;
-          const baseGroup = session.muscleGroup || resolveMuscleGroup(eq);
-          const fallbackLabel = baseGroup === 'Other'
-            ? (session.muscleGroup || eq?.target || eq?.muscles || '')
-            : baseGroup;
-          const key = resolveMuscleKey(fallbackLabel);
-          if (key && counts[key] !== undefined) counts[key] += 1;
+          const group = normalizeMuscleGroup(session.muscleGroup || eq);
+          if (group && counts[group] !== undefined) counts[group] += 1;
         });
       });
 
       return counts;
+    };
+
+    const MUSCLE_BADGE_CONFIG = {
+      chest: {
+        tint: 'var(--tint-chest)',
+        icon: <path d="M3 12h4l2 6 4-12 3 9h5" />
+      },
+      back: {
+        tint: 'var(--tint-back)',
+        icon: <path d="M12 3 4.5 6.5V12c0 4.5 3.3 8.6 7.5 9 4.2-.4 7.5-4.5 7.5-9V6.5L12 3Z" />
+      },
+      legs: {
+        tint: 'var(--tint-legs)',
+        icon: <path d="M6 4v8l4 4 4-4V4M10 16l-2 4M14 16l2 4" />
+      },
+      core: {
+        tint: 'var(--tint-core)',
+        icon: <path d="M5 7h14M5 12h14M5 17h14" />
+      },
+      arms: {
+        tint: 'var(--tint-arms)',
+        icon: <path d="M4 12h3l1-3h8l1 3h3M6 12v4M18 12v4" />
+      },
+      shoulders: {
+        tint: 'var(--tint-shoulders)',
+        icon: <path d="M12 3v4M12 17v4M3 12h4M17 12h4M7 7l2 2M15 7l-2 2M7 17l2-2M15 17l-2-2" />
+      },
+      neutral: {
+        tint: 'color-mix(in srgb, var(--muted) 35%, var(--surface))',
+        icon: <path d="M4 12h16M12 4v16" />
+      }
+    };
+
+    const renderMuscleBadge = (muscleGroup) => {
+      const key = normalizeMuscleGroup(muscleGroup);
+      const config = MUSCLE_BADGE_CONFIG[key] || MUSCLE_BADGE_CONFIG.neutral;
+      return (
+        <span className="muscle-badge" style={{ '--badge-tint': config.tint }}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            {config.icon}
+          </svg>
+        </span>
+      );
+    };
+
+    const getLastWorkedDateForGroup = (muscleGroup, history = {}, exerciseMeta = {}) => {
+      if (!muscleGroup) return null;
+      const target = normalizeMuscleGroup(muscleGroup);
+      let latest = null;
+      Object.entries(exerciseMeta || {}).forEach(([id, meta]) => {
+        if (!meta || meta.type === 'cardio' || meta.type === 'easterEgg') return;
+        const group = normalizeMuscleGroup(meta);
+        if (!group || group !== target) return;
+        safeArray(history?.[id]).forEach(session => {
+          if (!session?.date) return;
+          const time = new Date(session.date).getTime();
+          if (!Number.isFinite(time)) return;
+          if (!latest || time > latest.getTime()) {
+            latest = new Date(time);
+          }
+        });
+      });
+      return latest;
+    };
+
+    const formatLastWorkedLabel = (lastDate, now = new Date()) => {
+      if (!lastDate) {
+        return 'Not logged yet';
+      }
+      const msPerDay = 24 * 60 * 60 * 1000;
+      const nowDate = now instanceof Date ? now : new Date(now);
+      const diffDays = Math.floor((nowDate - lastDate) / msPerDay);
+      if (diffDays <= 7) {
+        const weekday = lastDate.toLocaleDateString(undefined, { weekday: 'short' });
+        return `Last worked • ${weekday}`;
+      }
+      const dateStr = lastDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+      return `Last worked • ${dateStr}`;
+    };
+
+    const getLastUsedDateForExercise = (exerciseId, history = {}, cardioHistory = {}) => {
+      if (!exerciseId) return null;
+      let latest = null;
+      if (exerciseId.startsWith('cardio_')) {
+        const cardioType = exerciseId.replace('cardio_', '');
+        safeArray(cardioHistory?.[cardioType]).forEach(session => {
+          if (!session?.date) return;
+          const time = new Date(session.date).getTime();
+          if (!Number.isFinite(time)) return;
+          if (!latest || time > latest.getTime()) {
+            latest = new Date(time);
+          }
+        });
+      }
+      safeArray(history?.[exerciseId]).forEach(session => {
+        if (!session?.date) return;
+        const time = new Date(session.date).getTime();
+        if (!Number.isFinite(time)) return;
+        if (!latest || time > latest.getTime()) {
+          latest = new Date(time);
+        }
+      });
+      return latest;
+    };
+
+    const formatDaysAgo = (lastDate, now = new Date()) => {
+      if (!lastDate) return 'Not used yet';
+
+      const msPerDay = 24 * 60 * 60 * 1000;
+      const nowDate = now instanceof Date ? now : new Date(now);
+      const diffDays = Math.floor((nowDate - lastDate) / msPerDay);
+
+      if (diffDays < 1) return 'Today';
+      if (diffDays === 1) return '1 day ago';
+      if (diffDays <= 30) return `${diffDays} days ago`;
+      return 'Over a month ago';
     };
 
     const getLastWorkoutDate = (history = {}, cardioHistory = {}) => {
@@ -2512,65 +2644,14 @@ const Home = ({
       ? 'Draft a recovery session in seconds.'
       : 'Draft a session in seconds.';
 
-  const weekSummary = useMemo(() => {
-    const today = new Date();
-    const days = [];
-    for (let i = 6; i >= 0; i -= 1) {
-      const date = new Date(today);
-      date.setDate(today.getDate() - i);
-      const key = toDayKey(date);
-      const entry = dayEntries?.[key];
-      const count = entry?.workoutCount ?? entry?.count ?? (entry?.type === 'workout' ? 1 : 0);
-      const label = date.toLocaleDateString('en-US', { weekday: 'short' }).slice(0, 1);
-      days.push({ key, count, label });
-    }
-    const total = days.reduce((sum, day) => sum + day.count, 0);
-    const maxCount = Math.max(0, ...days.map(day => day.count));
-    return { days, total, maxCount };
-  }, [dayEntries]);
-
-  const daysSinceLastWorkout = useMemo(() => {
-    if (!lastWorkoutDate) return null;
-    const diffMs = new Date() - lastWorkoutDate;
-    return Math.floor(diffMs / 86400000);
-  }, [lastWorkoutDate]);
-
-  const hasWorkoutLoggedInLast24Hours = useMemo(() => {
-    if (!lastWorkoutDate) return false;
-    const diffMs = new Date() - lastWorkoutDate;
-    return diffMs <= 86400000;
-  }, [lastWorkoutDate]);
-
-  // Reduce guilt: hide tracker after long gaps to ease re-entry.
-  const shouldHideTracker = daysSinceLastWorkout !== null
-    && daysSinceLastWorkout > 7
-    && !hasWorkoutLoggedInLast24Hours;
-
-  const welcomeBackMessage = useMemo(() => {
-    const welcomeBackMessages = [
-      "Good to see you. Let’s keep it simple today.",
-      "Welcome back — start wherever you are.",
-      "You’re here. That’s the hardest part.",
-      "Let’s ease in. One step is enough.",
-      "Ready when you are. No pressure.",
-      "Today can be light, strong, or somewhere in between.",
-      "Small starts still count.",
-      "You haven’t lost your progress — let’s build from here.",
-      "No expectations. Just movement.",
-      "Your comeback rep starts whenever you want.",
-      "Welcome — choose what feels doable today.",
-      "You’re in the right place. Let’s get moving.",
-      "Any pace works today.",
-      "Let’s take today one set at a time.",
-      "Your routine is waiting whenever you’re ready.",
-      "Today doesn’t need to be perfect, just started.",
-      "You showed up — everything else is optional.",
-      "Start soft, start slow, start strong. Your choice.",
-      "Let’s make today feel like a win, big or small.",
-      "This is a good place to begin again."
-    ];
-    return welcomeBackMessages[Math.floor(Math.random() * welcomeBackMessages.length)];
-  }, []);
+  const muscleGroups = useMemo(() => ([
+    { label: 'Chest', key: 'chest' },
+    { label: 'Back', key: 'back' },
+    { label: 'Legs', key: 'legs' },
+    { label: 'Core', key: 'core' },
+    { label: 'Arms', key: 'arms' },
+    { label: 'Shoulders', key: 'shoulders' }
+  ]), []);
 
   return (
     <div className="flex flex-col h-full bg-gray-50 home-screen">
@@ -2603,36 +2684,18 @@ const Home = ({
 
       <div className="flex-1 p-4 pb-6 home-content">
         <div className="home-stack">
-          <div className="home-card-row home-card-row--single">
-            <div className="home-mini-card">
-              {shouldHideTracker ? (
-                <div className="weekly-activity-message">{welcomeBackMessage}</div>
-              ) : (
-                <>
-                  <div className="weekly-activity-header">
-                    <div className="weekly-activity-title">This Week</div>
-                    <div className="weekly-activity-total">{weekSummary.total} workouts</div>
+          <div className="home-muscle-section">
+            <div className="home-card-row no-scrollbar">
+            {muscleGroups.map(group => {
+              return (
+                <div key={group.key} className="home-mini-card home-muscle-card">
+                  <div className="home-muscle-card-title">
+                    {renderMuscleBadge(group.label)}
+                    <span>{group.label}</span>
                   </div>
-                  <div className="weekly-activity-bars">
-                    {weekSummary.days.map(day => (
-                      <div key={day.key} className="weekly-activity-bar-column">
-                        <div className="weekly-activity-bar-track">
-                          <div
-                            className="weekly-activity-bar"
-                            style={{
-                              height: `${weekSummary.maxCount === 0 ? 6 : Math.max(6, Math.round((day.count / weekSummary.maxCount) * 48))}px`
-                            }}
-                          />
-                        </div>
-                        <div className="weekly-activity-day-label">{day.label}</div>
-                      </div>
-                    ))}
-                  </div>
-                  {suggestedFocus && (
-                    <div className="weekly-activity-focus">Suggested focus: {suggestedFocus}</div>
-                  )}
-                </>
-              )}
+                </div>
+              );
+            })}
             </div>
           </div>
           <div className="home-section-card">
@@ -2693,7 +2756,7 @@ const Home = ({
   );
 };
 
-const Workout = ({ profile, onSelectExercise, settings, setSettings, pinnedExercises, setPinnedExercises, recentExercises, favoriteExercises, onToggleFavorite, exerciseUsageCounts, activeSession, onFinishSession, onStartWorkoutFromBuilder, onAddExerciseFromSearch, onPushMessage, onRemoveSessionExercise, onSwapSessionExercise, onStartEmptySession, isRestDay, onCancelSession, sessionIntent }) => {
+const Workout = ({ profile, history, cardioHistory, colorfulExerciseCards, onSelectExercise, settings, setSettings, pinnedExercises, setPinnedExercises, recentExercises, starredExercises, onToggleStarred, exerciseUsageCounts, activeSession, onFinishSession, onStartWorkoutFromBuilder, onAddExerciseFromSearch, onPushMessage, onRemoveSessionExercise, onSwapSessionExercise, onStartEmptySession, isRestDay, onCancelSession, sessionIntent }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const debouncedSearchQuery = useDebounce(searchQuery, 200);
   const [libraryVisible, setLibraryVisible] = useState(settings.showAllExercises);
@@ -2722,7 +2785,7 @@ const Workout = ({ profile, onSelectExercise, settings, setSettings, pinnedExerc
 
   const filteredPinned = pinnedExercises.filter(id => availableEquipment.includes(id));
   const filteredRecents = recentExercises.filter(id => availableEquipment.includes(id)).slice(0, 10);
-  const filteredFavorites = (favoriteExercises || []).filter(id => availableEquipment.includes(id));
+  const filteredStarred = (starredExercises || []).filter(id => availableEquipment.includes(id));
   const todayKey = toDayKey(new Date());
   const hasSession = !!activeSession;
   const hasTodayWorkout = hasSession && activeSession?.date === todayKey;
@@ -2745,7 +2808,7 @@ const Workout = ({ profile, onSelectExercise, settings, setSettings, pinnedExerc
       : '';
   const finishSummaryText = finishSummaryIntent ? `${finishSummaryBase} • ${finishSummaryIntent}` : finishSummaryBase;
 
-  const filterOptions = ['All', 'Chest', 'Back', 'Legs', 'Shoulders', 'Arms', 'Core', 'Cardio', 'Pinned'];
+  const filterOptions = ['All', 'Chest', 'Back', 'Legs', 'Shoulders', 'Arms', 'Core', 'Cardio'];
 
   const resolveGroup = (eq) => {
     if (eq?.type === 'cardio') return 'Cardio';
@@ -2769,12 +2832,32 @@ const Workout = ({ profile, onSelectExercise, settings, setSettings, pinnedExerc
     return value.charAt(0).toUpperCase() + value.slice(1);
   };
 
+  const starredSet = useMemo(() => new Set(starredExercises || []), [starredExercises]);
+  const baseOrder = useMemo(() => {
+    return new Map(availableEquipment.map((id, idx) => [id, idx]));
+  }, [availableEquipment]);
+
+  const sortByStarWithinGroup = useCallback((ids) => {
+    return [...ids].sort((a, b) => {
+      const groupA = resolveGroup(EQUIPMENT_DB[a]);
+      const groupB = resolveGroup(EQUIPMENT_DB[b]);
+      if (groupA !== groupB) {
+        return (baseOrder.get(a) ?? 0) - (baseOrder.get(b) ?? 0);
+      }
+      const aStar = starredSet.has(a);
+      const bStar = starredSet.has(b);
+      if (aStar !== bStar) return aStar ? -1 : 1;
+      return (baseOrder.get(a) ?? 0) - (baseOrder.get(b) ?? 0);
+    });
+  }, [baseOrder, starredSet]);
+
   const filteredPool = useMemo(() => {
-    if (activeFilter === 'All') return availableEquipment;
-    if (activeFilter === 'Pinned') return filteredPinned;
-    if (activeFilter === 'Cardio') return availableEquipment.filter(id => EQUIPMENT_DB[id]?.type === 'cardio');
-    return availableEquipment.filter(id => resolveGroup(EQUIPMENT_DB[id]) === activeFilter);
-  }, [activeFilter, availableEquipment, filteredPinned]);
+    let pool = [];
+    if (activeFilter === 'All') pool = availableEquipment;
+    else if (activeFilter === 'Cardio') pool = availableEquipment.filter(id => EQUIPMENT_DB[id]?.type === 'cardio');
+    else pool = availableEquipment.filter(id => resolveGroup(EQUIPMENT_DB[id]) === activeFilter);
+    return sortByStarWithinGroup(pool);
+  }, [activeFilter, availableEquipment, filteredPinned, sortByStarWithinGroup]);
 
   // Use debounced query for search results (better performance)
   const searchResults = useMemo(() => {
@@ -2829,42 +2912,29 @@ const Workout = ({ profile, onSelectExercise, settings, setSettings, pinnedExerc
     return '🏋️‍♂️';
   };
 
-  const MUSCLE_GROUP_CATEGORY_MAP = {
-    chest: 'chest',
-    pecs: 'chest',
-    'upper chest': 'chest',
-    back: 'back',
-    'upper back': 'back',
-    'lower back': 'back',
-    lats: 'back',
-    traps: 'back',
-    legs: 'legs',
-    quads: 'legs',
-    quadriceps: 'legs',
-    hamstrings: 'legs',
-    glutes: 'legs',
-    calves: 'legs',
-    'inner thighs': 'legs',
-    adductors: 'legs',
-    core: 'core',
-    abs: 'core',
-    obliques: 'core',
-    biceps: 'arms',
-    triceps: 'arms',
-    forearms: 'arms',
-    brachialis: 'arms',
-    shoulders: 'shoulders',
-    delts: 'shoulders',
-    'front delts': 'shoulders',
-    'side delts': 'shoulders'
-  };
+  const renderStarIcon = (isStarred) => (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill={isStarred ? 'currentColor' : 'none'}
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+    </svg>
+  );
 
   const resolveCategoryClass = (label = '') => {
-    if (!label) return '';
-    const primary = `${label}`.split(',')[0].trim().toLowerCase();
-    if (!primary) return '';
-    const normalizedCategory = MUSCLE_GROUP_CATEGORY_MAP[primary] || null;
-    return normalizedCategory ? `category-${normalizedCategory}` : '';
+    const normalizedCategory = normalizeMuscleGroup(label);
+    if (!normalizedCategory) return '';
+    if (['chest', 'back', 'legs', 'core', 'arms', 'shoulders'].includes(normalizedCategory)) {
+      return `category-${normalizedCategory}`;
+    }
+    return '';
   };
 
   const renderExerciseRow = (id, actionLabel = 'Add', onAction) => {
@@ -2872,15 +2942,16 @@ const Workout = ({ profile, onSelectExercise, settings, setSettings, pinnedExerc
     if (!eq) return null;
     const isComingSoon = !!eq.comingSoon;
     const allowAdd = hasTodayWorkout && !isRestDay && !isComingSoon;
-    const categoryClass = resolveCategoryClass(eq.target || eq.muscles || '');
+    const categoryClass = colorfulExerciseCards ? resolveCategoryClass(eq.target || eq.muscles || '') : '';
+    const badgeGroup = normalizeMuscleGroup(eq);
     return (
       <div
         key={id}
-        className={`w-full p-3 rounded-xl border border-gray-200 bg-white flex items-center justify-between ${categoryClass}`}
+        className={`exercise-library-card w-full p-3 rounded-xl border border-gray-200 bg-white flex items-center justify-between ${categoryClass}`}
       >
         <div className="flex items-center gap-3 text-left">
-          <div className="w-10 h-10 rounded-lg workout-chip flex items-center justify-center text-lg">
-            {getExerciseIcon(eq)}
+          <div className="exercise-badge-wrapper">
+            {renderMuscleBadge(badgeGroup)}
           </div>
           <div>
             <div className="font-bold workout-heading text-sm leading-tight">{eq.name}</div>
@@ -2890,33 +2961,16 @@ const Workout = ({ profile, onSelectExercise, settings, setSettings, pinnedExerc
             )}
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={(e) => { e.stopPropagation(); onToggleFavorite?.(id); }}
-            disabled={isComingSoon}
-            aria-label={`${favoriteExercises?.includes(id) ? 'Unfavorite' : 'Favorite'} ${eq.name}`}
-            className={`w-8 h-8 rounded-full flex items-center justify-center ${favoriteExercises?.includes(id) ? 'text-yellow-500 bg-yellow-50' : 'text-gray-400 bg-gray-100'} ${isComingSoon ? 'opacity-50 cursor-not-allowed' : ''}`}
-          >
-            <Icon name="Star" className="w-4 h-4" />
-          </button>
-          <button
-            onClick={(e) => { e.stopPropagation(); togglePin(id); }}
-            disabled={isComingSoon}
-            className={`px-2 py-1 rounded-full text-xs font-bold ${pinnedExercises.includes(id) ? 'workout-chip' : 'bg-gray-100 text-gray-500'} ${
-              isComingSoon ? 'opacity-50 cursor-not-allowed' : ''
-            }`}
-          >
-            {pinnedExercises.includes(id) ? 'Pinned' : 'Pin'}
-          </button>
-          {allowAdd && (
+        {allowAdd && (
+          <div className="flex items-center gap-2">
             <button
               onClick={(e) => { e.preventDefault(); e.stopPropagation(); (onAction ? onAction(id) : onAddExerciseFromSearch?.(id)); }}
               className="cues-accent font-semibold text-sm"
             >
               {actionLabel}
             </button>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     );
   };
@@ -2925,45 +2979,32 @@ const Workout = ({ profile, onSelectExercise, settings, setSettings, pinnedExerc
     const eq = EQUIPMENT_DB[id];
     if (!eq) return null;
     const pinned = pinnedExercises.includes(id);
-    const typeIcon = getExerciseIcon(eq);
     const isComingSoon = !!eq.comingSoon;
     const allowAdd = hasTodayWorkout && !isRestDay && !isComingSoon;
-    const categoryClass = resolveCategoryClass(eq.target || eq.muscles || '');
+    const categoryClass = colorfulExerciseCards ? resolveCategoryClass(eq.target || eq.muscles || '') : '';
+    const badgeGroup = normalizeMuscleGroup(eq);
     return (
-      <div key={id} className={`tile text-left ${categoryClass}`}>
+      <div key={id} className={`tile text-left exercise-library-card ${categoryClass}`}>
         <div className="flex items-center justify-between mb-1">
-          <div className="text-lg">{typeIcon}</div>
+          <div className="exercise-badge-wrapper">
+            {renderMuscleBadge(badgeGroup)}
+          </div>
           <span className="text-[11px] workout-muted">{eq.type === 'cardio' ? 'Cardio' : eq.target}</span>
         </div>
         <div className="font-bold workout-heading text-sm leading-tight">{eq.name}</div>
         {isComingSoon && (
           <div className="text-[11px] text-gray-400 font-semibold mt-1">Coming Soon</div>
         )}
-        <div className="tile-actions">
-          <button
-            onClick={() => onToggleFavorite?.(id)}
-            disabled={isComingSoon}
-            className={`tile-action ${favoriteExercises?.includes(id) ? 'workout-chip' : ''} ${isComingSoon ? 'opacity-50 cursor-not-allowed' : ''}`}
-            aria-label={`${favoriteExercises?.includes(id) ? 'Unfavorite' : 'Favorite'} ${eq.name}`}
-          >
-            <Icon name="Star" className="w-4 h-4" />
-          </button>
-          <button
-            onClick={() => togglePin(id)}
-            disabled={isComingSoon}
-            className={`tile-action ${pinned ? 'workout-chip' : ''} ${isComingSoon ? 'opacity-50 cursor-not-allowed' : ''}`}
-          >
-            {pinned ? 'Pinned' : 'Pin'}
-          </button>
-          {allowAdd && (
+        {allowAdd && (
+          <div className="tile-actions">
             <button
               onClick={(e) => { e.preventDefault(); e.stopPropagation(); onAddExerciseFromSearch?.(id); }}
               className="tile-action primary"
             >
               Add
             </button>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     );
   };
@@ -3243,41 +3284,16 @@ const Workout = ({ profile, onSelectExercise, settings, setSettings, pinnedExerc
 
         {!isRestDay && !isSessionMode && (isDraft || libraryVisible || searchQuery) && (
           <>
-            {filteredFavorites.length > 0 && (
-              <Card className="space-y-2 workout-card">
-                <div className="flex items-center justify-between">
-                  <div className="text-xs font-bold workout-muted uppercase">Favorites</div>
-                  <div className="text-xs workout-muted">Starred</div>
-                </div>
-                <div className="space-y-2">
-                  {filteredFavorites.map(id => renderExerciseRow(id, 'Add'))}
-                </div>
-              </Card>
-            )}
             {filteredRecents.length > 0 && (
               <Card className="space-y-2 workout-card">
                 <div className="flex items-center justify-between">
                   <div className="text-xs font-bold workout-muted uppercase">Recent</div>
-                  <div className="text-xs workout-muted">Last used</div>
                 </div>
                 <div className="space-y-2">
                   {filteredRecents.map(id => renderExerciseRow(id, 'Add'))}
                 </div>
               </Card>
             )}
-            <Card className="space-y-2 workout-card">
-              <div className="flex items-center justify-between">
-                <div className="text-xs font-bold workout-muted uppercase">Pinned Exercises</div>
-                <div className="text-xs workout-muted">Tap to add</div>
-              </div>
-              {filteredPinned.length === 0 ? (
-                <div className="text-xs workout-muted">Pin your go-tos for quick access.</div>
-              ) : (
-                <div className="exercise-grid">
-                  {filteredPinned.map(renderExerciseTile)}
-                </div>
-              )}
-            </Card>
           </>
         )}
 
@@ -3470,7 +3486,6 @@ const PlateCalculator = ({ targetWeight, barWeight, onClose }) => {
       const [anchorWeight, setAnchorWeight] = useState('');
       const [anchorReps, setAnchorReps] = useState('');
       const [anchorAdjusted, setAnchorAdjusted] = useState(false);
-      const [showAdjust, setShowAdjust] = useState(false);
       const [loggedSets, setLoggedSets] = useState([]);
       const [setInputs, setSetInputs] = useState({ weight: '', reps: '' });
       const [editingIndex, setEditingIndex] = useState(null);
@@ -3542,7 +3557,6 @@ const PlateCalculator = ({ targetWeight, barWeight, onClose }) => {
         setAnchorWeight(weight);
         setAnchorReps(reps);
         setAnchorAdjusted(false);
-        setShowAdjust(false);
         setNote('');
         setSetInputs({ weight: '', reps: '' });
         setBaselineInputs({
@@ -3859,34 +3873,26 @@ const PlateCalculator = ({ targetWeight, barWeight, onClose }) => {
                                     </div>
                                     {anchorAdjusted && <div className="text-[11px] workout-accent-text font-semibold">Adjusted today</div>}
                                   </div>
-                                  <button
-                                    onClick={() => setShowAdjust(v => !v)}
-                                    className="px-3 py-2 rounded-lg bg-white border workout-accent-border workout-accent-text font-bold active:scale-95 text-xs"
-                                  >
-                                    {showAdjust ? 'Done' : 'Adjust'}
-                                  </button>
                                 </div>
 
-                                {showAdjust && (
-                                  <div className="grid grid-cols-2 gap-2">
-                                    <input
-                                      type="number"
-                                      inputMode="numeric"
-                                      value={anchorWeight}
-                                      onChange={(e) => { setAnchorWeight(e.target.value); setAnchorAdjusted(true); }}
-                                      placeholder="lbs"
-                                      className="w-full p-3 rounded-xl border-2 workout-accent-border bg-white font-black text-center text-gray-900 workout-accent-focus outline-none"
-                                    />
-                                    <input
-                                      type="number"
-                                      inputMode="numeric"
-                                      value={anchorReps}
-                                      onChange={(e) => { setAnchorReps(e.target.value); setAnchorAdjusted(true); }}
-                                      placeholder="reps"
-                                      className="w-full p-3 rounded-xl border-2 workout-accent-border bg-white font-black text-center text-gray-900 workout-accent-focus outline-none"
-                                    />
-                                  </div>
-                                )}
+                                <div className="grid grid-cols-2 gap-2">
+                                  <input
+                                    type="number"
+                                    inputMode="numeric"
+                                    value={anchorWeight}
+                                    onChange={(e) => { setAnchorWeight(e.target.value); setAnchorAdjusted(true); }}
+                                    placeholder="lbs"
+                                    className="w-full p-3 rounded-xl border-2 workout-accent-border bg-white font-black text-center text-gray-900 workout-accent-focus outline-none"
+                                  />
+                                  <input
+                                    type="number"
+                                    inputMode="numeric"
+                                    value={anchorReps}
+                                    onChange={(e) => { setAnchorReps(e.target.value); setAnchorAdjusted(true); }}
+                                    placeholder="reps"
+                                    className="w-full p-3 rounded-xl border-2 workout-accent-border bg-white font-black text-center text-gray-900 workout-accent-focus outline-none"
+                                  />
+                                </div>
 
                                 <div className="flex items-center justify-between text-sm font-semibold text-gray-900">
                                   <span>Sets completed: {loggedSets.length}</span>
@@ -4580,7 +4586,7 @@ const PlateCalculator = ({ targetWeight, barWeight, onClose }) => {
     };
 
     // ========== PROFILE TAB ==========
-    const ProfileView = ({ settings, setSettings, themeMode, darkVariant, setThemeMode, setDarkVariant, onViewAnalytics, onViewPatterns, onViewMuscleMap, onExportData, onImportData, onResetApp, onResetOnboarding }) => {
+    const ProfileView = ({ settings, setSettings, themeMode, darkVariant, setThemeMode, setDarkVariant, colorfulExerciseCards, onToggleColorfulExerciseCards, onViewAnalytics, onViewPatterns, onViewMuscleMap, onExportData, onImportData, onResetApp, onResetOnboarding }) => {
       const [workoutOpen, setWorkoutOpen] = useState(false);
       const [appearanceOpen, setAppearanceOpen] = useState(false);
       const [analyticsOpen, setAnalyticsOpen] = useState(false);
@@ -4639,6 +4645,13 @@ const PlateCalculator = ({ targetWeight, barWeight, onClose }) => {
                     subtitle="Low-glare interface"
                     enabled={isDarkMode}
                     onToggle={(next) => setThemeMode(next ? 'dark' : 'light')}
+                  />
+                  <ToggleRow
+                    icon="Sparkles"
+                    title="Colorful exercise cards"
+                    subtitle="Show muscle group colors on exercise cards"
+                    enabled={colorfulExerciseCards}
+                    onToggle={onToggleColorfulExerciseCards}
                   />
                   <div>
                     <div className="text-xs font-bold text-gray-500 uppercase mb-2">Dark mode accent</div>
@@ -5691,6 +5704,14 @@ const CardioLogger = ({ id, onClose, onUpdateSessionLogs, sessionLogs, history, 
       const [settings, setSettings] = useState({ insightsEnabled: true, smartSuggestionsEnabled: true, darkMode: false, darkAccent: 'purple', showAllExercises: false, pinnedExercises: [], workoutViewMode: 'all', suggestedWorkoutCollapsed: true, useDemoData: false });
       const [themeMode, setThemeModeState] = useState('light');
       const [darkVariant, setDarkVariantState] = useState('blue');
+      const [colorfulExerciseCards, setColorfulExerciseCards] = useState(() => {
+        try {
+          const raw = localStorage.getItem('ps_colorfulExerciseCards');
+          return raw === null ? true : Boolean(JSON.parse(raw));
+        } catch {
+          return true;
+        }
+      });
       const [history, setHistory] = useState({});
       const [cardioHistory, setCardioHistory] = useState({});
       const [tab, setTab] = useState('home');
@@ -5732,7 +5753,7 @@ const CardioLogger = ({ id, onClose, onUpdateSessionLogs, sessionLogs, history, 
       });
 
       const [pinnedExercises, setPinnedExercises] = useState([]);
-      const [favoriteExercises, setFavoriteExercises] = useState([]);
+      const [starredExercises, setStarredExercises] = useState([]);
       const [recentExercises, setRecentExercises] = useState([]);
       const [exerciseUsageCounts, setExerciseUsageCounts] = useState({});
       const [dayEntries, setDayEntries] = useState({});
@@ -5855,7 +5876,13 @@ const CardioLogger = ({ id, onClose, onUpdateSessionLogs, sessionLogs, history, 
         const savedTodayWorkout = storage.get(TODAY_WORKOUT_KEY, null);
         const savedActiveSession = storage.get(ACTIVE_SESSION_KEY, null);
         const savedDraftSession = storage.get(DRAFT_SESSION_KEY, null);
-        const savedFavorites = storage.get('favoritesExercises', []);
+        let savedStarred = [];
+        try {
+          const raw = localStorage.getItem('ps_starredExercises');
+          savedStarred = raw ? JSON.parse(raw) : [];
+        } catch {
+          savedStarred = [];
+        }
         const normalizedActiveSession = normalizeActiveSession(
           savedTodaySession || savedTodayWorkout || savedActiveSession || savedDraftSession
         );
@@ -5915,7 +5942,7 @@ const CardioLogger = ({ id, onClose, onUpdateSessionLogs, sessionLogs, history, 
         }
 
         setPinnedExercises(metaToUse.pinnedExercises || []);
-        setFavoriteExercises(Array.isArray(savedFavorites) ? savedFavorites : []);
+        setStarredExercises(Array.isArray(savedStarred) ? savedStarred : []);
         setRecentExercises(metaToUse.recentExercises || []);
         setExerciseUsageCounts(metaToUse.exerciseUsageCounts || {});
         setDayEntries(metaToUse.dayEntries || {});
@@ -5930,7 +5957,25 @@ const CardioLogger = ({ id, onClose, onUpdateSessionLogs, sessionLogs, history, 
         }
       }, [profile, loaded]);
       useEffect(() => { if(loaded) storage.set('ps_v2_settings', settings); }, [settings, loaded]);
-      useEffect(() => { if(loaded) storage.set('favoritesExercises', favoriteExercises); }, [favoriteExercises, loaded]);
+      useEffect(() => {
+        if (!loaded) return;
+        try {
+          localStorage.setItem('ps_starredExercises', JSON.stringify(starredExercises));
+        } catch {
+          return;
+        }
+      }, [starredExercises, loaded]);
+      useEffect(() => {
+        if (!loaded) return;
+        try {
+          localStorage.setItem('ps_colorfulExerciseCards', JSON.stringify(!!colorfulExerciseCards));
+        } catch {
+          return;
+        }
+      }, [colorfulExerciseCards, loaded]);
+      useEffect(() => {
+        document.body.classList.toggle('exercise-colors-off', !colorfulExerciseCards);
+      }, [colorfulExerciseCards]);
       useEffect(() => {
         if (!loaded) return;
         const persist = () => storage.set('ps_v2_history', history);
@@ -6169,9 +6214,9 @@ const CardioLogger = ({ id, onClose, onUpdateSessionLogs, sessionLogs, history, 
         }
       };
 
-      const toggleFavoriteExercise = (exerciseId) => {
+      const toggleStarredExercise = (exerciseId) => {
         if (!exerciseId) return;
-        setFavoriteExercises(prev => prev.includes(exerciseId)
+        setStarredExercises(prev => prev.includes(exerciseId)
           ? prev.filter(id => id !== exerciseId)
           : [...prev, exerciseId]
         );
@@ -6938,7 +6983,8 @@ const CardioLogger = ({ id, onClose, onUpdateSessionLogs, sessionLogs, history, 
           setAppState({ lastWorkoutType: null, lastWorkoutDayKey: null, restDays: [] });
           setSettings({ insightsEnabled: true, smartSuggestionsEnabled: true, darkMode: false, darkAccent: 'purple', showAllExercises: false, pinnedExercises: [], workoutViewMode: 'all', suggestedWorkoutCollapsed: true });
           setPinnedExercises([]);
-          setFavoriteExercises([]);
+          setStarredExercises([]);
+          setColorfulExerciseCards(true);
           setRecentExercises([]);
           setExerciseUsageCounts({});
           setDayEntries({});
@@ -6958,7 +7004,12 @@ const CardioLogger = ({ id, onClose, onUpdateSessionLogs, sessionLogs, history, 
           storage.set(TODAY_WORKOUT_KEY, null);
           storage.set(TODAY_SESSION_KEY, null);
           storage.set(REST_DAY_KEY, []);
-          storage.set('favoritesExercises', []);
+          try {
+            localStorage.setItem('ps_starredExercises', JSON.stringify([]));
+            localStorage.setItem('ps_colorfulExerciseCards', JSON.stringify(true));
+          } catch {
+            return;
+          }
         }
       };
 
@@ -7228,14 +7279,17 @@ return (
                 <div className={`page ${!showAnalytics && !showPatterns && !showMuscleMap && tab === 'workout' ? 'active' : ''}`} aria-hidden={showAnalytics || showPatterns || showMuscleMap || tab !== 'workout'}>
                   <Workout
                     profile={profile}
+                    history={effectiveHistory}
+                    cardioHistory={effectiveCardioHistory}
+                    colorfulExerciseCards={colorfulExerciseCards}
                     onSelectExercise={handleSelectExercise}
                     settings={settings}
                     setSettings={setSettings}
                     pinnedExercises={pinnedExercises}
                     setPinnedExercises={setPinnedExercises}
                     recentExercises={recentExercises}
-                    favoriteExercises={favoriteExercises}
-                    onToggleFavorite={toggleFavoriteExercise}
+                    starredExercises={starredExercises}
+                    onToggleStarred={toggleStarredExercise}
                     exerciseUsageCounts={exerciseUsageCounts}
                     onStartWorkoutFromBuilder={startWorkoutFromBuilder}
                     activeSession={activeSessionToday}
@@ -7258,6 +7312,8 @@ return (
                     darkVariant={darkVariant}
                     setThemeMode={setThemeMode}
                     setDarkVariant={setDarkVariant}
+                    colorfulExerciseCards={colorfulExerciseCards}
+                    onToggleColorfulExerciseCards={setColorfulExerciseCards}
                     onViewAnalytics={() => {
                       setShowPatterns(false);
                       setShowMuscleMap(false);

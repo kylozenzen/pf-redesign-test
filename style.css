@@ -479,7 +479,7 @@ body.app-shell {
   display: flex;
   flex-direction: column;
   height: 100%;
-  padding: 20px 18px calc(var(--bottom-nav-h) + env(safe-area-inset-bottom) + 24px) !important;
+  padding: 20px 18px calc(var(--bottom-nav-h) + env(safe-area-inset-bottom)) !important;
   overflow-y: auto;
   gap: 16px;
   justify-content: flex-start;
@@ -495,13 +495,22 @@ body.app-shell {
 }
 
 .home-card-row {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  display: flex;
+  flex-direction: row;
   gap: 14px;
+  overflow-x: auto;
+  padding-bottom: 6px;
+  scroll-snap-type: x mandatory;
 }
 
 .home-card-row--single {
-  grid-template-columns: minmax(0, 1fr);
+  overflow-x: visible;
+  scroll-snap-type: none;
+}
+
+.home-card-row--single .home-mini-card {
+  flex: 1 1 100%;
+  min-width: 0;
 }
 
 .home-screen > .bg-white {
@@ -519,6 +528,10 @@ body.app-shell {
   box-shadow: none;
 }
 
+.home-muscle-section {
+  display: none !important;
+}
+
 .home-mini-card {
   padding: 14px;
   border-radius: var(--radius-card);
@@ -526,6 +539,104 @@ body.app-shell {
   background: var(--card-gradient), var(--surface);
   border: 1px solid var(--border);
   box-shadow: var(--shadow-card), inset 0 1px 0 var(--hairline);
+}
+
+.home-muscle-card {
+  min-width: 120px;
+  flex: 0 0 auto;
+  scroll-snap-align: start;
+  transition: transform 140ms var(--ease-standard);
+}
+
+.home-muscle-card:active {
+  transform: scale(0.97);
+}
+
+.home-muscle-card:active .muscle-badge {
+  transform: scale(0.96);
+}
+
+.home-muscle-card-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--text);
+}
+
+.muscle-card-subtext {
+  margin-top: 3px;
+  font-size: 11px;
+  color: var(--muted);
+  letter-spacing: 0.01em;
+}
+
+.muscle-badge {
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle at 30% 30%, color-mix(in srgb, var(--badge-tint) 55%, var(--surface) 45%), color-mix(in srgb, var(--badge-tint) 20%, var(--surface) 80%));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--border) 60%, transparent), 0 6px 12px rgba(15, 23, 42, 0.25);
+  transition: transform 140ms var(--ease-standard);
+}
+
+.muscle-badge svg {
+  width: 13px;
+  height: 13px;
+  stroke: var(--text);
+}
+
+body.exercise-colors-off .category-chest,
+body.exercise-colors-off .category-back,
+body.exercise-colors-off .category-legs,
+body.exercise-colors-off .category-core,
+body.exercise-colors-off .category-arms,
+body.exercise-colors-off .category-shoulders {
+  background: var(--card-gradient), var(--surface) !important;
+  border-color: var(--border) !important;
+  border-left-color: var(--border) !important;
+}
+
+body.exercise-colors-off .muscle-badge {
+  background: color-mix(in srgb, var(--surface) 92%, var(--border));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--border) 70%, transparent), 0 6px 12px rgba(15, 23, 42, 0.15);
+}
+
+body.exercise-colors-off .muscle-badge svg {
+  stroke: var(--muted);
+}
+
+body.exercise-colors-off .exercise-badge-wrapper {
+  background: var(--surface-2);
+  border-color: var(--border);
+}
+
+.exercise-badge-wrapper {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--surface) 94%, var(--border));
+  border: 1px solid var(--border);
+}
+
+.exercise-last-used {
+  margin-top: 3px;
+  font-size: 11px;
+  color: var(--muted);
+  letter-spacing: 0.01em;
+}
+
+.exercise-library-card:active .muscle-badge,
+.tile:active .muscle-badge {
+  transform: scale(0.96);
 }
 
 .weekly-activity-header {
@@ -1119,9 +1230,9 @@ textarea::placeholder {
 }
 
 .exercise-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
 .tile {
@@ -1129,6 +1240,7 @@ textarea::placeholder {
   background: var(--surface);
   border-radius: var(--radius-small);
   padding: 12px;
+  width: 100%;
   transition: transform 160ms var(--ease-standard),
               box-shadow 220ms var(--ease-standard),
               border-color 220ms var(--ease-standard),
