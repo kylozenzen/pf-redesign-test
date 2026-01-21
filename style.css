@@ -479,7 +479,7 @@ body.app-shell {
   display: flex;
   flex-direction: column;
   height: 100%;
-  padding: 20px 18px calc(var(--bottom-nav-h) + env(safe-area-inset-bottom) + 8px) !important;
+  padding: 20px 18px calc(var(--bottom-nav-h) + env(safe-area-inset-bottom)) !important;
   overflow-y: auto;
   gap: 16px;
   justify-content: flex-start;
@@ -589,6 +589,31 @@ body.app-shell {
   width: 13px;
   height: 13px;
   stroke: var(--text);
+}
+
+body.exercise-colors-off .category-chest,
+body.exercise-colors-off .category-back,
+body.exercise-colors-off .category-legs,
+body.exercise-colors-off .category-core,
+body.exercise-colors-off .category-arms,
+body.exercise-colors-off .category-shoulders {
+  background: var(--card-gradient), var(--surface) !important;
+  border-color: var(--border) !important;
+  border-left-color: var(--border) !important;
+}
+
+body.exercise-colors-off .muscle-badge {
+  background: color-mix(in srgb, var(--surface) 92%, var(--border));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--border) 70%, transparent), 0 6px 12px rgba(15, 23, 42, 0.15);
+}
+
+body.exercise-colors-off .muscle-badge svg {
+  stroke: var(--muted);
+}
+
+body.exercise-colors-off .exercise-badge-wrapper {
+  background: var(--surface-2);
+  border-color: var(--border);
 }
 
 .exercise-badge-wrapper {

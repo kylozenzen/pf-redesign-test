@@ -2900,7 +2900,7 @@ const Workout = ({ profile, history, cardioHistory, colorfulExerciseCards, onSel
       : '';
   const finishSummaryText = finishSummaryIntent ? `${finishSummaryBase} • ${finishSummaryIntent}` : finishSummaryBase;
 
-  const filterOptions = ['All', 'Chest', 'Back', 'Legs', 'Shoulders', 'Arms', 'Core', 'Cardio', 'Pinned'];
+  const filterOptions = ['All', 'Chest', 'Back', 'Legs', 'Shoulders', 'Arms', 'Core', 'Cardio'];
 
   const resolveGroup = (eq) => {
     if (eq?.type === 'cardio') return 'Cardio';
@@ -2946,7 +2946,6 @@ const Workout = ({ profile, history, cardioHistory, colorfulExerciseCards, onSel
   const filteredPool = useMemo(() => {
     let pool = [];
     if (activeFilter === 'All') pool = availableEquipment;
-    else if (activeFilter === 'Pinned') pool = filteredPinned;
     else if (activeFilter === 'Cardio') pool = availableEquipment.filter(id => EQUIPMENT_DB[id]?.type === 'cardio');
     else pool = availableEquipment.filter(id => resolveGroup(EQUIPMENT_DB[id]) === activeFilter);
     return sortByStarWithinGroup(pool);
@@ -3039,7 +3038,6 @@ const Workout = ({ profile, history, cardioHistory, colorfulExerciseCards, onSel
     const badgeGroup = colorfulExerciseCards ? normalizeMuscleGroup(eq) : 'other';
     const lastUsedDate = getLastUsedDateForExercise(id, history, cardioHistory);
     const lastUsedLabel = formatDaysAgo(lastUsedDate);
-    const isStarred = starredSet.has(id);
     return (
       <div
         key={id}
@@ -3052,39 +3050,21 @@ const Workout = ({ profile, history, cardioHistory, colorfulExerciseCards, onSel
           <div>
             <div className="font-bold workout-heading text-sm leading-tight">{eq.name}</div>
             <div className="text-xs workout-muted">{eq.type === 'cardio' ? 'Cardio' : eq.target}</div>
-            <div className="exercise-last-used">{lastUsedLabel}</div>
             {isComingSoon && (
               <div className="text-[11px] text-gray-400 font-semibold">Coming Soon</div>
             )}
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={(e) => { e.stopPropagation(); onToggleStarred?.(id); }}
-            disabled={isComingSoon}
-            aria-label={`${isStarred ? 'Unstar' : 'Star'} ${eq.name}`}
-            className={`w-8 h-8 rounded-full flex items-center justify-center ${isStarred ? 'text-yellow-500 bg-yellow-50' : 'text-gray-400 bg-gray-100'} ${isComingSoon ? 'opacity-50 cursor-not-allowed' : ''}`}
-          >
-            {renderStarIcon(isStarred)}
-          </button>
-          <button
-            onClick={(e) => { e.stopPropagation(); togglePin(id); }}
-            disabled={isComingSoon}
-            className={`px-2 py-1 rounded-full text-xs font-bold ${pinnedExercises.includes(id) ? 'workout-chip' : 'bg-gray-100 text-gray-500'} ${
-              isComingSoon ? 'opacity-50 cursor-not-allowed' : ''
-            }`}
-          >
-            {pinnedExercises.includes(id) ? 'Pinned' : 'Pin'}
-          </button>
-          {allowAdd && (
+        {allowAdd && (
+          <div className="flex items-center gap-2">
             <button
               onClick={(e) => { e.preventDefault(); e.stopPropagation(); (onAction ? onAction(id) : onAddExerciseFromSearch?.(id)); }}
               className="cues-accent font-semibold text-sm"
             >
               {actionLabel}
             </button>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     );
   };
@@ -3099,7 +3079,6 @@ const Workout = ({ profile, history, cardioHistory, colorfulExerciseCards, onSel
     const badgeGroup = colorfulExerciseCards ? normalizeMuscleGroup(eq) : 'other';
     const lastUsedDate = getLastUsedDateForExercise(id, history, cardioHistory);
     const lastUsedLabel = formatDaysAgo(lastUsedDate);
-    const isStarred = starredSet.has(id);
     return (
       <div key={id} className={`tile text-left exercise-library-card ${categoryClass}`}>
         <div className="flex items-center justify-between mb-1">
@@ -3109,35 +3088,19 @@ const Workout = ({ profile, history, cardioHistory, colorfulExerciseCards, onSel
           <span className="text-[11px] workout-muted">{eq.type === 'cardio' ? 'Cardio' : eq.target}</span>
         </div>
         <div className="font-bold workout-heading text-sm leading-tight">{eq.name}</div>
-        <div className="exercise-last-used">{lastUsedLabel}</div>
         {isComingSoon && (
           <div className="text-[11px] text-gray-400 font-semibold mt-1">Coming Soon</div>
         )}
-        <div className="tile-actions">
-          <button
-            onClick={() => onToggleStarred?.(id)}
-            disabled={isComingSoon}
-            className={`tile-action ${isStarred ? 'workout-chip' : ''} ${isComingSoon ? 'opacity-50 cursor-not-allowed' : ''}`}
-            aria-label={`${isStarred ? 'Unstar' : 'Star'} ${eq.name}`}
-          >
-            {renderStarIcon(isStarred)}
-          </button>
-          <button
-            onClick={() => togglePin(id)}
-            disabled={isComingSoon}
-            className={`tile-action ${pinned ? 'workout-chip' : ''} ${isComingSoon ? 'opacity-50 cursor-not-allowed' : ''}`}
-          >
-            {pinned ? 'Pinned' : 'Pin'}
-          </button>
-          {allowAdd && (
+        {allowAdd && (
+          <div className="tile-actions">
             <button
               onClick={(e) => { e.preventDefault(); e.stopPropagation(); onAddExerciseFromSearch?.(id); }}
               className="tile-action primary"
             >
               Add
             </button>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     );
   };
@@ -3417,41 +3380,16 @@ const Workout = ({ profile, history, cardioHistory, colorfulExerciseCards, onSel
 
         {!isRestDay && !isSessionMode && (isDraft || libraryVisible || searchQuery) && (
           <>
-            {filteredStarred.length > 0 && (
-              <Card className="space-y-2 workout-card">
-                <div className="flex items-center justify-between">
-                  <div className="text-xs font-bold workout-muted uppercase">Starred</div>
-                  <div className="text-xs workout-muted">Saved</div>
-                </div>
-                <div className="space-y-2">
-                  {sortByStarWithinGroup(filteredStarred).map(id => renderExerciseRow(id, 'Add'))}
-                </div>
-              </Card>
-            )}
             {filteredRecents.length > 0 && (
               <Card className="space-y-2 workout-card">
                 <div className="flex items-center justify-between">
                   <div className="text-xs font-bold workout-muted uppercase">Recent</div>
-                  <div className="text-xs workout-muted">Last used</div>
                 </div>
                 <div className="space-y-2">
                   {filteredRecents.map(id => renderExerciseRow(id, 'Add'))}
                 </div>
               </Card>
             )}
-            <Card className="space-y-2 workout-card">
-              <div className="flex items-center justify-between">
-                <div className="text-xs font-bold workout-muted uppercase">Pinned Exercises</div>
-                <div className="text-xs workout-muted">Tap to add</div>
-              </div>
-              {filteredPinned.length === 0 ? (
-                <div className="text-xs workout-muted">Pin your go-tos for quick access.</div>
-              ) : (
-                <div className="exercise-grid">
-                  {filteredPinned.map(renderExerciseTile)}
-                </div>
-              )}
-            </Card>
           </>
         )}
 
@@ -4814,6 +4752,13 @@ const PlateCalculator = ({ targetWeight, barWeight, onClose }) => {
                     enabled={isDarkMode}
                     onToggle={(next) => setThemeMode(next ? 'dark' : 'light')}
                   />
+                  <ToggleRow
+                    icon="Sparkles"
+                    title="Colorful exercise cards"
+                    subtitle="Show muscle group colors on exercise cards"
+                    enabled={colorfulExerciseCards}
+                    onToggle={onToggleColorfulExerciseCards}
+                  />
                   <div>
                     <div className="text-xs font-bold text-gray-500 uppercase mb-2">Dark mode accent</div>
                     <div className="flex gap-2">
@@ -4839,16 +4784,6 @@ const PlateCalculator = ({ targetWeight, barWeight, onClose }) => {
                   </div>
                 </div>
               )}
-            </Card>
-
-            <Card className="space-y-2">
-              <ToggleRow
-                icon="Sparkles"
-                title="Colorful exercise cards"
-                subtitle="Show muscle group colors on exercise cards"
-                enabled={colorfulExerciseCards}
-                onToggle={onToggleColorfulExerciseCards}
-              />
             </Card>
 
             <Card className="space-y-3">
@@ -6144,6 +6079,9 @@ const CardioLogger = ({ id, onClose, onUpdateSessionLogs, sessionLogs, history, 
           return;
         }
       }, [colorfulExerciseCards, loaded]);
+      useEffect(() => {
+        document.body.classList.toggle('exercise-colors-off', !colorfulExerciseCards);
+      }, [colorfulExerciseCards]);
       useEffect(() => {
         if (!loaded) return;
         const persist = () => storage.set('ps_v2_history', history);
