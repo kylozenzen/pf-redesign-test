@@ -3609,8 +3609,11 @@ const PlateCalculator = ({ targetWeight, barWeight, onClose }) => {
           syncSessionSets(next);
           return next;
         });
-        const nextWeight = anchorWeight || String(w);
-        const nextReps = anchorReps || '';
+        const nextWeight = String(w);
+        const nextReps = String(r);
+        setAnchorWeight(nextWeight);
+        setAnchorReps(nextReps);
+        setAnchorAdjusted(true);
         setSetInputs({ weight: nextWeight, reps: nextReps });
         const shouldFocusReps = Boolean(nextWeight);
         requestAnimationFrame(() => {
@@ -3873,25 +3876,6 @@ const PlateCalculator = ({ targetWeight, barWeight, onClose }) => {
                                     </div>
                                     {anchorAdjusted && <div className="text-[11px] workout-accent-text font-semibold">Adjusted today</div>}
                                   </div>
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-2">
-                                  <input
-                                    type="number"
-                                    inputMode="numeric"
-                                    value={anchorWeight}
-                                    onChange={(e) => { setAnchorWeight(e.target.value); setAnchorAdjusted(true); }}
-                                    placeholder="lbs"
-                                    className="w-full p-3 rounded-xl border-2 workout-accent-border bg-white font-black text-center text-gray-900 workout-accent-focus outline-none"
-                                  />
-                                  <input
-                                    type="number"
-                                    inputMode="numeric"
-                                    value={anchorReps}
-                                    onChange={(e) => { setAnchorReps(e.target.value); setAnchorAdjusted(true); }}
-                                    placeholder="reps"
-                                    className="w-full p-3 rounded-xl border-2 workout-accent-border bg-white font-black text-center text-gray-900 workout-accent-focus outline-none"
-                                  />
                                 </div>
 
                                 <div className="flex items-center justify-between text-sm font-semibold text-gray-900">
