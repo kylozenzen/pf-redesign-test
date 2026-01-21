@@ -479,7 +479,7 @@ body.app-shell {
   display: flex;
   flex-direction: column;
   height: 100%;
-  padding: 20px 18px calc(var(--bottom-nav-h) + env(safe-area-inset-bottom) + 24px) !important;
+  padding: 20px 18px calc(var(--bottom-nav-h) + env(safe-area-inset-bottom) + 8px) !important;
   overflow-y: auto;
   gap: 16px;
   justify-content: flex-start;

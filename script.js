@@ -2848,7 +2848,7 @@ const Home = ({
   );
 };
 
-const Workout = ({ profile, history, cardioHistory, onSelectExercise, settings, setSettings, pinnedExercises, setPinnedExercises, recentExercises, favoriteExercises, onToggleFavorite, exerciseUsageCounts, activeSession, onFinishSession, onStartWorkoutFromBuilder, onAddExerciseFromSearch, onPushMessage, onRemoveSessionExercise, onSwapSessionExercise, onStartEmptySession, isRestDay, onCancelSession, sessionIntent }) => {
+const Workout = ({ profile, history, cardioHistory, colorfulExerciseCards, onSelectExercise, settings, setSettings, pinnedExercises, setPinnedExercises, recentExercises, starredExercises, onToggleStarred, exerciseUsageCounts, activeSession, onFinishSession, onStartWorkoutFromBuilder, onAddExerciseFromSearch, onPushMessage, onRemoveSessionExercise, onSwapSessionExercise, onStartEmptySession, isRestDay, onCancelSession, sessionIntent }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const debouncedSearchQuery = useDebounce(searchQuery, 200);
   const [libraryVisible, setLibraryVisible] = useState(settings.showAllExercises);
@@ -2877,7 +2877,7 @@ const Workout = ({ profile, history, cardioHistory, onSelectExercise, settings, 
 
   const filteredPinned = pinnedExercises.filter(id => availableEquipment.includes(id));
   const filteredRecents = recentExercises.filter(id => availableEquipment.includes(id)).slice(0, 10);
-  const filteredFavorites = (favoriteExercises || []).filter(id => availableEquipment.includes(id));
+  const filteredStarred = (starredExercises || []).filter(id => availableEquipment.includes(id));
   const todayKey = toDayKey(new Date());
   const hasSession = !!activeSession;
   const hasTodayWorkout = hasSession && activeSession?.date === todayKey;
@@ -2924,12 +2924,33 @@ const Workout = ({ profile, history, cardioHistory, onSelectExercise, settings, 
     return value.charAt(0).toUpperCase() + value.slice(1);
   };
 
+  const starredSet = useMemo(() => new Set(starredExercises || []), [starredExercises]);
+  const baseOrder = useMemo(() => {
+    return new Map(availableEquipment.map((id, idx) => [id, idx]));
+  }, [availableEquipment]);
+
+  const sortByStarWithinGroup = useCallback((ids) => {
+    return [...ids].sort((a, b) => {
+      const groupA = resolveGroup(EQUIPMENT_DB[a]);
+      const groupB = resolveGroup(EQUIPMENT_DB[b]);
+      if (groupA !== groupB) {
+        return (baseOrder.get(a) ?? 0) - (baseOrder.get(b) ?? 0);
+      }
+      const aStar = starredSet.has(a);
+      const bStar = starredSet.has(b);
+      if (aStar !== bStar) return aStar ? -1 : 1;
+      return (baseOrder.get(a) ?? 0) - (baseOrder.get(b) ?? 0);
+    });
+  }, [baseOrder, starredSet]);
+
   const filteredPool = useMemo(() => {
-    if (activeFilter === 'All') return availableEquipment;
-    if (activeFilter === 'Pinned') return filteredPinned;
-    if (activeFilter === 'Cardio') return availableEquipment.filter(id => EQUIPMENT_DB[id]?.type === 'cardio');
-    return availableEquipment.filter(id => resolveGroup(EQUIPMENT_DB[id]) === activeFilter);
-  }, [activeFilter, availableEquipment, filteredPinned]);
+    let pool = [];
+    if (activeFilter === 'All') pool = availableEquipment;
+    else if (activeFilter === 'Pinned') pool = filteredPinned;
+    else if (activeFilter === 'Cardio') pool = availableEquipment.filter(id => EQUIPMENT_DB[id]?.type === 'cardio');
+    else pool = availableEquipment.filter(id => resolveGroup(EQUIPMENT_DB[id]) === activeFilter);
+    return sortByStarWithinGroup(pool);
+  }, [activeFilter, availableEquipment, filteredPinned, sortByStarWithinGroup]);
 
   // Use debounced query for search results (better performance)
   const searchResults = useMemo(() => {
@@ -2984,6 +3005,22 @@ const Workout = ({ profile, history, cardioHistory, onSelectExercise, settings, 
     return '🏋️‍♂️';
   };
 
+  const renderStarIcon = (isStarred) => (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill={isStarred ? 'currentColor' : 'none'}
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+    </svg>
+  );
+
   const resolveCategoryClass = (label = '') => {
     const normalizedCategory = normalizeMuscleGroup(label);
     if (!normalizedCategory) return '';
@@ -2998,10 +3035,11 @@ const Workout = ({ profile, history, cardioHistory, onSelectExercise, settings, 
     if (!eq) return null;
     const isComingSoon = !!eq.comingSoon;
     const allowAdd = hasTodayWorkout && !isRestDay && !isComingSoon;
-    const categoryClass = resolveCategoryClass(eq.target || eq.muscles || '');
-    const badgeGroup = normalizeMuscleGroup(eq);
+    const categoryClass = colorfulExerciseCards ? resolveCategoryClass(eq.target || eq.muscles || '') : '';
+    const badgeGroup = colorfulExerciseCards ? normalizeMuscleGroup(eq) : 'other';
     const lastUsedDate = getLastUsedDateForExercise(id, history, cardioHistory);
     const lastUsedLabel = formatDaysAgo(lastUsedDate);
+    const isStarred = starredSet.has(id);
     return (
       <div
         key={id}
@@ -3022,12 +3060,12 @@ const Workout = ({ profile, history, cardioHistory, onSelectExercise, settings, 
         </div>
         <div className="flex items-center gap-2">
           <button
-            onClick={(e) => { e.stopPropagation(); onToggleFavorite?.(id); }}
+            onClick={(e) => { e.stopPropagation(); onToggleStarred?.(id); }}
             disabled={isComingSoon}
-            aria-label={`${favoriteExercises?.includes(id) ? 'Unfavorite' : 'Favorite'} ${eq.name}`}
-            className={`w-8 h-8 rounded-full flex items-center justify-center ${favoriteExercises?.includes(id) ? 'text-yellow-500 bg-yellow-50' : 'text-gray-400 bg-gray-100'} ${isComingSoon ? 'opacity-50 cursor-not-allowed' : ''}`}
+            aria-label={`${isStarred ? 'Unstar' : 'Star'} ${eq.name}`}
+            className={`w-8 h-8 rounded-full flex items-center justify-center ${isStarred ? 'text-yellow-500 bg-yellow-50' : 'text-gray-400 bg-gray-100'} ${isComingSoon ? 'opacity-50 cursor-not-allowed' : ''}`}
           >
-            <Icon name="Star" className="w-4 h-4" />
+            {renderStarIcon(isStarred)}
           </button>
           <button
             onClick={(e) => { e.stopPropagation(); togglePin(id); }}
@@ -3057,10 +3095,11 @@ const Workout = ({ profile, history, cardioHistory, onSelectExercise, settings, 
     const pinned = pinnedExercises.includes(id);
     const isComingSoon = !!eq.comingSoon;
     const allowAdd = hasTodayWorkout && !isRestDay && !isComingSoon;
-    const categoryClass = resolveCategoryClass(eq.target || eq.muscles || '');
-    const badgeGroup = normalizeMuscleGroup(eq);
+    const categoryClass = colorfulExerciseCards ? resolveCategoryClass(eq.target || eq.muscles || '') : '';
+    const badgeGroup = colorfulExerciseCards ? normalizeMuscleGroup(eq) : 'other';
     const lastUsedDate = getLastUsedDateForExercise(id, history, cardioHistory);
     const lastUsedLabel = formatDaysAgo(lastUsedDate);
+    const isStarred = starredSet.has(id);
     return (
       <div key={id} className={`tile text-left exercise-library-card ${categoryClass}`}>
         <div className="flex items-center justify-between mb-1">
@@ -3076,12 +3115,12 @@ const Workout = ({ profile, history, cardioHistory, onSelectExercise, settings, 
         )}
         <div className="tile-actions">
           <button
-            onClick={() => onToggleFavorite?.(id)}
+            onClick={() => onToggleStarred?.(id)}
             disabled={isComingSoon}
-            className={`tile-action ${favoriteExercises?.includes(id) ? 'workout-chip' : ''} ${isComingSoon ? 'opacity-50 cursor-not-allowed' : ''}`}
-            aria-label={`${favoriteExercises?.includes(id) ? 'Unfavorite' : 'Favorite'} ${eq.name}`}
+            className={`tile-action ${isStarred ? 'workout-chip' : ''} ${isComingSoon ? 'opacity-50 cursor-not-allowed' : ''}`}
+            aria-label={`${isStarred ? 'Unstar' : 'Star'} ${eq.name}`}
           >
-            <Icon name="Star" className="w-4 h-4" />
+            {renderStarIcon(isStarred)}
           </button>
           <button
             onClick={() => togglePin(id)}
@@ -3378,14 +3417,14 @@ const Workout = ({ profile, history, cardioHistory, onSelectExercise, settings, 
 
         {!isRestDay && !isSessionMode && (isDraft || libraryVisible || searchQuery) && (
           <>
-            {filteredFavorites.length > 0 && (
+            {filteredStarred.length > 0 && (
               <Card className="space-y-2 workout-card">
                 <div className="flex items-center justify-between">
-                  <div className="text-xs font-bold workout-muted uppercase">Favorites</div>
-                  <div className="text-xs workout-muted">Starred</div>
+                  <div className="text-xs font-bold workout-muted uppercase">Starred</div>
+                  <div className="text-xs workout-muted">Saved</div>
                 </div>
                 <div className="space-y-2">
-                  {filteredFavorites.map(id => renderExerciseRow(id, 'Add'))}
+                  {sortByStarWithinGroup(filteredStarred).map(id => renderExerciseRow(id, 'Add'))}
                 </div>
               </Card>
             )}
@@ -4715,7 +4754,7 @@ const PlateCalculator = ({ targetWeight, barWeight, onClose }) => {
     };
 
     // ========== PROFILE TAB ==========
-    const ProfileView = ({ settings, setSettings, themeMode, darkVariant, setThemeMode, setDarkVariant, onViewAnalytics, onViewPatterns, onViewMuscleMap, onExportData, onImportData, onResetApp, onResetOnboarding }) => {
+    const ProfileView = ({ settings, setSettings, themeMode, darkVariant, setThemeMode, setDarkVariant, colorfulExerciseCards, onToggleColorfulExerciseCards, onViewAnalytics, onViewPatterns, onViewMuscleMap, onExportData, onImportData, onResetApp, onResetOnboarding }) => {
       const [workoutOpen, setWorkoutOpen] = useState(false);
       const [appearanceOpen, setAppearanceOpen] = useState(false);
       const [analyticsOpen, setAnalyticsOpen] = useState(false);
@@ -4800,6 +4839,16 @@ const PlateCalculator = ({ targetWeight, barWeight, onClose }) => {
                   </div>
                 </div>
               )}
+            </Card>
+
+            <Card className="space-y-2">
+              <ToggleRow
+                icon="Sparkles"
+                title="Colorful exercise cards"
+                subtitle="Show muscle group colors on exercise cards"
+                enabled={colorfulExerciseCards}
+                onToggle={onToggleColorfulExerciseCards}
+              />
             </Card>
 
             <Card className="space-y-3">
@@ -5826,6 +5875,14 @@ const CardioLogger = ({ id, onClose, onUpdateSessionLogs, sessionLogs, history, 
       const [settings, setSettings] = useState({ insightsEnabled: true, smartSuggestionsEnabled: true, darkMode: false, darkAccent: 'purple', showAllExercises: false, pinnedExercises: [], workoutViewMode: 'all', suggestedWorkoutCollapsed: true, useDemoData: false });
       const [themeMode, setThemeModeState] = useState('light');
       const [darkVariant, setDarkVariantState] = useState('blue');
+      const [colorfulExerciseCards, setColorfulExerciseCards] = useState(() => {
+        try {
+          const raw = localStorage.getItem('ps_colorfulExerciseCards');
+          return raw === null ? true : Boolean(JSON.parse(raw));
+        } catch {
+          return true;
+        }
+      });
       const [history, setHistory] = useState({});
       const [cardioHistory, setCardioHistory] = useState({});
       const [tab, setTab] = useState('home');
@@ -5867,7 +5924,7 @@ const CardioLogger = ({ id, onClose, onUpdateSessionLogs, sessionLogs, history, 
       });
 
       const [pinnedExercises, setPinnedExercises] = useState([]);
-      const [favoriteExercises, setFavoriteExercises] = useState([]);
+      const [starredExercises, setStarredExercises] = useState([]);
       const [recentExercises, setRecentExercises] = useState([]);
       const [exerciseUsageCounts, setExerciseUsageCounts] = useState({});
       const [dayEntries, setDayEntries] = useState({});
@@ -5990,7 +6047,13 @@ const CardioLogger = ({ id, onClose, onUpdateSessionLogs, sessionLogs, history, 
         const savedTodayWorkout = storage.get(TODAY_WORKOUT_KEY, null);
         const savedActiveSession = storage.get(ACTIVE_SESSION_KEY, null);
         const savedDraftSession = storage.get(DRAFT_SESSION_KEY, null);
-        const savedFavorites = storage.get('favoritesExercises', []);
+        let savedStarred = [];
+        try {
+          const raw = localStorage.getItem('ps_starredExercises');
+          savedStarred = raw ? JSON.parse(raw) : [];
+        } catch {
+          savedStarred = [];
+        }
         const normalizedActiveSession = normalizeActiveSession(
           savedTodaySession || savedTodayWorkout || savedActiveSession || savedDraftSession
         );
@@ -6050,7 +6113,7 @@ const CardioLogger = ({ id, onClose, onUpdateSessionLogs, sessionLogs, history, 
         }
 
         setPinnedExercises(metaToUse.pinnedExercises || []);
-        setFavoriteExercises(Array.isArray(savedFavorites) ? savedFavorites : []);
+        setStarredExercises(Array.isArray(savedStarred) ? savedStarred : []);
         setRecentExercises(metaToUse.recentExercises || []);
         setExerciseUsageCounts(metaToUse.exerciseUsageCounts || {});
         setDayEntries(metaToUse.dayEntries || {});
@@ -6065,7 +6128,22 @@ const CardioLogger = ({ id, onClose, onUpdateSessionLogs, sessionLogs, history, 
         }
       }, [profile, loaded]);
       useEffect(() => { if(loaded) storage.set('ps_v2_settings', settings); }, [settings, loaded]);
-      useEffect(() => { if(loaded) storage.set('favoritesExercises', favoriteExercises); }, [favoriteExercises, loaded]);
+      useEffect(() => {
+        if (!loaded) return;
+        try {
+          localStorage.setItem('ps_starredExercises', JSON.stringify(starredExercises));
+        } catch {
+          return;
+        }
+      }, [starredExercises, loaded]);
+      useEffect(() => {
+        if (!loaded) return;
+        try {
+          localStorage.setItem('ps_colorfulExerciseCards', JSON.stringify(!!colorfulExerciseCards));
+        } catch {
+          return;
+        }
+      }, [colorfulExerciseCards, loaded]);
       useEffect(() => {
         if (!loaded) return;
         const persist = () => storage.set('ps_v2_history', history);
@@ -6304,9 +6382,9 @@ const CardioLogger = ({ id, onClose, onUpdateSessionLogs, sessionLogs, history, 
         }
       };
 
-      const toggleFavoriteExercise = (exerciseId) => {
+      const toggleStarredExercise = (exerciseId) => {
         if (!exerciseId) return;
-        setFavoriteExercises(prev => prev.includes(exerciseId)
+        setStarredExercises(prev => prev.includes(exerciseId)
           ? prev.filter(id => id !== exerciseId)
           : [...prev, exerciseId]
         );
@@ -7073,7 +7151,8 @@ const CardioLogger = ({ id, onClose, onUpdateSessionLogs, sessionLogs, history, 
           setAppState({ lastWorkoutType: null, lastWorkoutDayKey: null, restDays: [] });
           setSettings({ insightsEnabled: true, smartSuggestionsEnabled: true, darkMode: false, darkAccent: 'purple', showAllExercises: false, pinnedExercises: [], workoutViewMode: 'all', suggestedWorkoutCollapsed: true });
           setPinnedExercises([]);
-          setFavoriteExercises([]);
+          setStarredExercises([]);
+          setColorfulExerciseCards(true);
           setRecentExercises([]);
           setExerciseUsageCounts({});
           setDayEntries({});
@@ -7093,7 +7172,12 @@ const CardioLogger = ({ id, onClose, onUpdateSessionLogs, sessionLogs, history, 
           storage.set(TODAY_WORKOUT_KEY, null);
           storage.set(TODAY_SESSION_KEY, null);
           storage.set(REST_DAY_KEY, []);
-          storage.set('favoritesExercises', []);
+          try {
+            localStorage.setItem('ps_starredExercises', JSON.stringify([]));
+            localStorage.setItem('ps_colorfulExerciseCards', JSON.stringify(true));
+          } catch {
+            return;
+          }
         }
       };
 
@@ -7365,14 +7449,15 @@ return (
                     profile={profile}
                     history={effectiveHistory}
                     cardioHistory={effectiveCardioHistory}
+                    colorfulExerciseCards={colorfulExerciseCards}
                     onSelectExercise={handleSelectExercise}
                     settings={settings}
                     setSettings={setSettings}
                     pinnedExercises={pinnedExercises}
                     setPinnedExercises={setPinnedExercises}
                     recentExercises={recentExercises}
-                    favoriteExercises={favoriteExercises}
-                    onToggleFavorite={toggleFavoriteExercise}
+                    starredExercises={starredExercises}
+                    onToggleStarred={toggleStarredExercise}
                     exerciseUsageCounts={exerciseUsageCounts}
                     onStartWorkoutFromBuilder={startWorkoutFromBuilder}
                     activeSession={activeSessionToday}
@@ -7395,6 +7480,8 @@ return (
                     darkVariant={darkVariant}
                     setThemeMode={setThemeMode}
                     setDarkVariant={setDarkVariant}
+                    colorfulExerciseCards={colorfulExerciseCards}
+                    onToggleColorfulExerciseCards={setColorfulExerciseCards}
                     onViewAnalytics={() => {
                       setShowPatterns(false);
                       setShowMuscleMap(false);
