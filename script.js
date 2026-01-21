@@ -551,6 +551,14 @@ const { useState, useEffect, useMemo, useRef, useCallback } = React;
       }
     };
 
+    const defaultGymWallet = {
+      gymName: "",
+      gymAddress: "",
+      lockerCombo: "",
+      notes: "",
+      membershipImageDataUrl: ""
+    };
+
     const EXPERIENCE_LEVELS = [
       { label: 'Beginner', desc: '0–3 months', detail: 'New to lifting or restarting' },
       { label: 'Novice', desc: '3–9 months', detail: 'Learning form + consistency' },
@@ -2563,6 +2571,177 @@ const PerfectWeek = ({ show, onClose }) => {
   );
 };
 
+const GymWalletModal = ({ show, gymWallet, onSave, onClose }) => {
+  const [draft, setDraft] = useState({ ...defaultGymWallet });
+  const [isLockerVisible, setIsLockerVisible] = useState(false);
+  const fileInputRef = useRef(null);
+
+  useEffect(() => {
+    if (!show) return;
+    setDraft({ ...defaultGymWallet, ...(gymWallet || {}) });
+    setIsLockerVisible(false);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  }, [show, gymWallet]);
+
+  if (!show) return null;
+
+  const addressValue = draft.gymAddress.trim();
+  const mapsUrl = addressValue
+    ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addressValue)}`
+    : '';
+
+  const handleFileChange = (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = typeof reader.result === 'string' ? reader.result : '';
+      setDraft(prev => ({ ...prev, membershipImageDataUrl: result }));
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleSave = () => {
+    onSave?.({ ...defaultGymWallet, ...draft });
+    onClose?.();
+  };
+
+  const handleClose = () => {
+    onClose?.();
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 backdrop-blur-sm" onClick={handleClose}>
+      <div
+        className="bg-white dark-mode-modal w-full max-w-md rounded-t-3xl shadow-2xl flex flex-col animate-slide-up"
+        style={{ maxHeight: '90vh' }}
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="p-4 border-b border-gray-100 flex items-center justify-between bg-white rounded-t-3xl flex-shrink-0">
+          <div>
+            <div className="text-xs font-bold text-gray-500 uppercase tracking-wide">Utilities</div>
+            <h2 className="text-lg font-bold text-gray-900">Gym Wallet</h2>
+          </div>
+          <button onClick={handleClose} className="p-2 bg-gray-50 rounded-full text-gray-400 hover:text-gray-600" aria-label="Close Gym Wallet">
+            <Icon name="X" className="w-5 h-5" />
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto">
+          <div className="p-5 space-y-5">
+            <div className="space-y-2">
+              <div className="gym-wallet-label">Membership Screenshot</div>
+              <div className="gym-wallet-preview">
+                {draft.membershipImageDataUrl ? (
+                  <img src={draft.membershipImageDataUrl} alt="Gym membership preview" />
+                ) : (
+                  <div className="gym-wallet-placeholder">Upload a screenshot of your membership card.</div>
+                )}
+              </div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleFileChange}
+                className="gym-wallet-file"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="gym-wallet-label" htmlFor="gym-wallet-name">Gym Name</label>
+              <input
+                id="gym-wallet-name"
+                type="text"
+                value={draft.gymName}
+                onChange={(event) => setDraft(prev => ({ ...prev, gymName: event.target.value }))}
+                className="gym-wallet-input"
+                placeholder="Planet Strength Gym"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="gym-wallet-label" htmlFor="gym-wallet-address">Gym Address</label>
+              <input
+                id="gym-wallet-address"
+                type="text"
+                value={draft.gymAddress}
+                onChange={(event) => setDraft(prev => ({ ...prev, gymAddress: event.target.value }))}
+                className="gym-wallet-input"
+                placeholder="123 Strength Ave, Your City"
+              />
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                {mapsUrl ? (
+                  <a href={mapsUrl} target="_blank" rel="noreferrer" className="gym-wallet-link">
+                    {draft.gymAddress}
+                  </a>
+                ) : (
+                  <span className="gym-wallet-muted">Add an address to open Maps.</span>
+                )}
+                <button
+                  type="button"
+                  className="accent-button gym-wallet-map-button"
+                  onClick={() => {
+                    if (!mapsUrl) return;
+                    window.open(mapsUrl, '_blank');
+                  }}
+                  disabled={!mapsUrl}
+                >
+                  Get Me There
+                </button>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="gym-wallet-label" htmlFor="gym-wallet-locker">Locker Combo</label>
+              <div className="gym-wallet-locker">
+                <input
+                  id="gym-wallet-locker"
+                  type={isLockerVisible ? 'text' : 'password'}
+                  value={draft.lockerCombo}
+                  onChange={(event) => setDraft(prev => ({ ...prev, lockerCombo: event.target.value }))}
+                  className="gym-wallet-input"
+                  placeholder="•••"
+                />
+                <button
+                  type="button"
+                  className="gym-wallet-toggle"
+                  onClick={() => setIsLockerVisible(prev => !prev)}
+                  aria-label={isLockerVisible ? 'Hide locker combination' : 'Show locker combination'}
+                >
+                  {isLockerVisible ? '🙈' : '👁️'}
+                </button>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="gym-wallet-label" htmlFor="gym-wallet-notes">Notes</label>
+              <textarea
+                id="gym-wallet-notes"
+                value={draft.notes}
+                onChange={(event) => setDraft(prev => ({ ...prev, notes: event.target.value }))}
+                className="gym-wallet-textarea"
+                placeholder="Parking tips, front desk hours, etc."
+                rows={4}
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="p-4 border-t border-gray-100 bg-white flex flex-col gap-3">
+          <button type="button" className="accent-button" onClick={handleSave}>
+            Save Gym Info
+          </button>
+          <button type="button" className="ghost-button" onClick={handleClose}>
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const Home = ({
   profile,
   lastWorkoutLabel,
@@ -2577,7 +2756,9 @@ const Home = ({
   onLogRestDay,
   onUndoRestDay,
   onTriggerGlory,
-  onLongPressRestDay
+  onLongPressRestDay,
+  gymWallet,
+  onOpenGymWallet
 }) => {
   const longPressTimerRef = useRef(null);
   const restDayTimerRef = useRef(null);
@@ -2643,6 +2824,10 @@ const Home = ({
     : sessionIntent === 'recovery'
       ? 'Draft a recovery session in seconds.'
       : 'Draft a session in seconds.';
+  const isGymWalletReady = Boolean(gymWallet?.gymName?.trim() && gymWallet?.membershipImageDataUrl);
+  const gymWalletSubtitle = isGymWalletReady
+    ? 'Tap to view your gym info.'
+    : 'Set up your gym info for quick access.';
 
   const muscleGroups = useMemo(() => ([
     { label: 'Chest', key: 'chest' },
@@ -2734,6 +2919,15 @@ const Home = ({
               </div>
             </div>
           )}
+          <button
+            type="button"
+            onClick={onOpenGymWallet}
+            className="home-section-card home-gym-wallet"
+          >
+            <div className="home-section-title">Gym Wallet</div>
+            <div className="home-section-subtitle">{gymWalletSubtitle}</div>
+            <div className="home-gym-wallet-cta">Open Gym Wallet</div>
+          </button>
           <button
             onClick={handleRestDayClick}
             onTouchStart={handleRestDayTouchStart}
@@ -5760,6 +5954,7 @@ const CardioLogger = ({ id, onClose, onUpdateSessionLogs, sessionLogs, history, 
       const [showButDidYouDie, setShowButDidYouDie] = useState(false);
       const [showNice, setShowNice] = useState(false);
       const [showPerfectWeek, setShowPerfectWeek] = useState(false);
+      const [showGymWallet, setShowGymWallet] = useState(false);
       const [activeSession, setActiveSession] = useState(null);
       const [inlineMessage, setInlineMessage] = useState(null);
       const messageTimerRef = useRef(null);
@@ -5780,7 +5975,8 @@ const CardioLogger = ({ id, onClose, onUpdateSessionLogs, sessionLogs, history, 
       const [appState, setAppState] = useState({
         lastWorkoutType: null,
         lastWorkoutDayKey: null,
-        restDays: []
+        restDays: [],
+        gymWallet: { ...defaultGymWallet }
       });
 
       const [pinnedExercises, setPinnedExercises] = useState([]);
@@ -5900,7 +6096,7 @@ const CardioLogger = ({ id, onClose, onUpdateSessionLogs, sessionLogs, history, 
         const savedSettings = storage.get('ps_v2_settings', settingsDefaults);
         const savedHistory = storage.get('ps_v2_history', {});
         const savedCardio = storage.get('ps_v2_cardio', {});
-        const savedState = storage.get('ps_v2_state', { lastWorkoutType: null, lastWorkoutDayKey: null, restDays: [] });
+        const savedState = storage.get('ps_v2_state', { lastWorkoutType: null, lastWorkoutDayKey: null, restDays: [], gymWallet: { ...defaultGymWallet } });
         const savedRestDays = storage.get(REST_DAY_KEY, []);
         const savedDismiss = storage.get('ps_dismissed_draft_date', null);
         const savedTodaySession = storage.get(TODAY_SESSION_KEY, null);
@@ -5939,7 +6135,11 @@ const CardioLogger = ({ id, onClose, onUpdateSessionLogs, sessionLogs, history, 
         setSettings({ ...settingsDefaults, ...savedSettings });
         setHistory(savedHistory);
         setCardioHistory(savedCardio);
-        setAppState({ ...savedState, restDays: mergedRestDays });
+        setAppState({
+          ...savedState,
+          restDays: mergedRestDays,
+          gymWallet: { ...defaultGymWallet, ...(savedState?.gymWallet || {}) }
+        });
         storage.set(REST_DAY_KEY, mergedRestDays);
         setDismissedDraftDate(savedDismiss);
         const resolvedTodaySession = normalizedActiveSession?.date === currentDayKey ? normalizedActiveSession : null;
@@ -6263,6 +6463,7 @@ const CardioLogger = ({ id, onClose, onUpdateSessionLogs, sessionLogs, history, 
         if (lastWorkoutLabel === 'Today') return 'calm';
         return 'standard';
       }, [isRestDay, lastWorkoutLabel]);
+      const gymWallet = appState?.gymWallet || defaultGymWallet;
       const homeQuote = useMemo(() => getDailyQuote(homeQuotes, 'home'), [todayKey]);
       const suggestedFocus = useMemo(() => {
         const muscleGroups = ['Chest', 'Back', 'Legs', 'Shoulders', 'Arms', 'Core'];
@@ -6691,6 +6892,13 @@ const CardioLogger = ({ id, onClose, onUpdateSessionLogs, sessionLogs, history, 
         pushMessage('Rest day removed.');
       };
 
+      const handleSaveGymWallet = (nextWallet) => {
+        setAppState(prev => ({
+          ...(prev || {}),
+          gymWallet: { ...defaultGymWallet, ...(nextWallet || {}) }
+        }));
+      };
+
       const startWorkoutFromBuilder = () => {
         if (isRestDay || !activeSessionToday) return;
         ensureWorkoutDayEntry((activeSessionToday.items || []).map(item => item.exerciseId || item.id));
@@ -6997,6 +7205,7 @@ const CardioLogger = ({ id, onClose, onUpdateSessionLogs, sessionLogs, history, 
 
       const handleReset = () => {
         if(confirm("Reset all data? This can't be undone.")) {
+          const resetAppState = { lastWorkoutType: null, lastWorkoutDayKey: null, restDays: [], gymWallet: { ...defaultGymWallet } };
           const freshProfile = { 
             username: '', 
             avatar: '💪', 
@@ -7011,7 +7220,7 @@ const CardioLogger = ({ id, onClose, onUpdateSessionLogs, sessionLogs, history, 
           setActiveSession(null);
           setView('onboarding');
           setTab('home');
-          setAppState({ lastWorkoutType: null, lastWorkoutDayKey: null, restDays: [] });
+          setAppState(resetAppState);
           setSettings({ insightsEnabled: true, smartSuggestionsEnabled: true, darkMode: false, darkAccent: 'purple', showAllExercises: false, pinnedExercises: [], workoutViewMode: 'all', suggestedWorkoutCollapsed: true });
           setPinnedExercises([]);
           setStarredExercises([]);
@@ -7025,7 +7234,7 @@ const CardioLogger = ({ id, onClose, onUpdateSessionLogs, sessionLogs, history, 
           storage.set('ps_v2_profile', null);
           storage.set('ps_v2_history', {});
           storage.set('ps_v2_cardio', {});
-          storage.set('ps_v2_state', { lastWorkoutType: null, lastWorkoutDayKey: null, restDays: [] });
+          storage.set('ps_v2_state', resetAppState);
           storage.set('ps_v2_settings', { insightsEnabled: true, smartSuggestionsEnabled: true, darkMode: false, darkAccent: 'purple', showAllExercises: false, pinnedExercises: [], workoutViewMode: 'all', suggestedWorkoutCollapsed: true });
           storage.set(STORAGE_KEY, { version: STORAGE_VERSION, pinnedExercises: [], recentExercises: [], exerciseUsageCounts: {}, dayEntries: {}, lastExerciseStats: {} });
           storage.set(ONBOARDING_KEY, false);
@@ -7151,13 +7360,14 @@ const CardioLogger = ({ id, onClose, onUpdateSessionLogs, sessionLogs, history, 
                   const nextAppState = {
                     lastWorkoutType: importedData.appState?.lastWorkoutType || null,
                     lastWorkoutDayKey: importedData.appState?.lastWorkoutDayKey || null,
-                    restDays
+                    restDays,
+                    gymWallet: { ...defaultGymWallet, ...(importedData.appState?.gymWallet || {}) }
                   };
                   setAppState(nextAppState);
                   storage.set('ps_v2_state', nextAppState);
                   storage.set(REST_DAY_KEY, restDays);
                 } else {
-                  const nextAppState = { lastWorkoutType: null, lastWorkoutDayKey: null, restDays: [] };
+                  const nextAppState = { lastWorkoutType: null, lastWorkoutDayKey: null, restDays: [], gymWallet: { ...defaultGymWallet } };
                   setAppState(nextAppState);
                   storage.set('ps_v2_state', nextAppState);
                   storage.set(REST_DAY_KEY, []);
@@ -7305,6 +7515,8 @@ return (
                     onUndoRestDay={undoRestDay}
                     onTriggerGlory={() => setShowGlory(true)}
                     onLongPressRestDay={() => setShowButDidYouDie(true)}
+                    gymWallet={gymWallet}
+                    onOpenGymWallet={() => setShowGymWallet(true)}
                   />
                 </div>
                 <div className={`page ${!showAnalytics && !showPatterns && !showMuscleMap && tab === 'workout' ? 'active' : ''}`} aria-hidden={showAnalytics || showPatterns || showMuscleMap || tab !== 'workout'}>
@@ -7431,6 +7643,13 @@ return (
             />
 
             <NiceToast show={showNice} />
+
+            <GymWalletModal
+              show={showGymWallet}
+              gymWallet={gymWallet}
+              onSave={handleSaveGymWallet}
+              onClose={() => setShowGymWallet(false)}
+            />
 
             <PerfectWeek 
               show={showPerfectWeek} 
