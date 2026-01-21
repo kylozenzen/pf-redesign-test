@@ -2756,7 +2756,7 @@ const Home = ({
   );
 };
 
-const Workout = ({ profile, history, cardioHistory, colorfulExerciseCards, onSelectExercise, settings, setSettings, pinnedExercises, setPinnedExercises, recentExercises, starredExercises, onToggleStarred, exerciseUsageCounts, activeSession, onFinishSession, onStartWorkoutFromBuilder, onAddExerciseFromSearch, onPushMessage, onRemoveSessionExercise, onSwapSessionExercise, onStartEmptySession, isRestDay, onCancelSession, sessionIntent }) => {
+const Workout = ({ profile, history, cardioHistory, colorfulExerciseCards, onSelectExercise, settings, setSettings, recentExercises, starredExercises, onToggleStarred, exerciseUsageCounts, activeSession, onFinishSession, onStartWorkoutFromBuilder, onAddExerciseFromSearch, onPushMessage, onRemoveSessionExercise, onSwapSessionExercise, onStartEmptySession, isRestDay, onCancelSession, sessionIntent }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const debouncedSearchQuery = useDebounce(searchQuery, 200);
   const [libraryVisible, setLibraryVisible] = useState(settings.showAllExercises);
@@ -2783,7 +2783,6 @@ const Workout = ({ profile, history, cardioHistory, colorfulExerciseCards, onSel
     });
   }, [gymType]);
 
-  const filteredPinned = pinnedExercises.filter(id => availableEquipment.includes(id));
   const filteredRecents = recentExercises.filter(id => availableEquipment.includes(id)).slice(0, 10);
   const filteredStarred = (starredExercises || []).filter(id => availableEquipment.includes(id));
   const todayKey = toDayKey(new Date());
@@ -2857,7 +2856,7 @@ const Workout = ({ profile, history, cardioHistory, colorfulExerciseCards, onSel
     else if (activeFilter === 'Cardio') pool = availableEquipment.filter(id => EQUIPMENT_DB[id]?.type === 'cardio');
     else pool = availableEquipment.filter(id => resolveGroup(EQUIPMENT_DB[id]) === activeFilter);
     return sortByStarWithinGroup(pool);
-  }, [activeFilter, availableEquipment, filteredPinned, sortByStarWithinGroup]);
+  }, [activeFilter, availableEquipment, sortByStarWithinGroup]);
 
   // Use debounced query for search results (better performance)
   const searchResults = useMemo(() => {
@@ -2865,14 +2864,6 @@ const Workout = ({ profile, history, cardioHistory, colorfulExerciseCards, onSel
     if (!debouncedSearchQuery.trim()) return [];
     return fuzzyMatchExercises(debouncedSearchQuery, pool);
   }, [debouncedSearchQuery, filteredPool]);
-
-  const togglePin = (id) => {
-    if (EQUIPMENT_DB[id]?.comingSoon) return;
-    const exists = pinnedExercises.includes(id);
-    const updated = exists ? pinnedExercises.filter(x => x !== id) : [...pinnedExercises, id];
-    setPinnedExercises(updated);
-    setSettings(prev => ({ ...(prev || {}), pinnedExercises: updated }));
-  };
 
   useEffect(() => {
     setLibraryVisible(settings.showAllExercises);
@@ -2937,6 +2928,35 @@ const Workout = ({ profile, history, cardioHistory, colorfulExerciseCards, onSel
     return '';
   };
 
+  const getLastStrengthSet = useCallback((exerciseId) => {
+    const sessions = safeArray(history?.[exerciseId]);
+    if (sessions.length === 0) return null;
+    const lastSession = sessions.reduce((latest, session) => {
+      if (!latest) return session;
+      const latestTime = new Date(latest.date || 0).getTime();
+      const sessionTime = new Date(session.date || 0).getTime();
+      return sessionTime > latestTime ? session : latest;
+    }, null);
+    const sets = safeArray(lastSession?.sets);
+    if (!sets.length) return null;
+    return sets[sets.length - 1];
+  }, [history]);
+
+  const buildExerciseMeta = useCallback((exerciseId) => {
+    const eq = EQUIPMENT_DB[exerciseId];
+    if (!eq || eq.type === 'cardio') return 'No sets logged yet';
+    const lastSet = getLastStrengthSet(exerciseId);
+    if (!lastSet) return 'No sets logged yet';
+    const weight = Number(lastSet.weight);
+    const reps = Number(lastSet.reps);
+    const hasWeight = Number.isFinite(weight) && weight > 0;
+    const hasReps = Number.isFinite(reps) && reps > 0;
+    if (hasWeight && hasReps) return `Last: ${weight} lb × ${reps}`;
+    if (hasWeight) return `Last: ${weight} lb`;
+    if (hasReps) return `Last: Bodyweight × ${reps}`;
+    return 'No sets logged yet';
+  }, [getLastStrengthSet]);
+
   const renderExerciseRow = (id, actionLabel = 'Add', onAction) => {
     const eq = EQUIPMENT_DB[id];
     if (!eq) return null;
@@ -2944,33 +2964,47 @@ const Workout = ({ profile, history, cardioHistory, colorfulExerciseCards, onSel
     const allowAdd = hasTodayWorkout && !isRestDay && !isComingSoon;
     const categoryClass = colorfulExerciseCards ? resolveCategoryClass(eq.target || eq.muscles || '') : '';
     const badgeGroup = normalizeMuscleGroup(eq);
+    const isStarred = starredSet.has(id);
+    const metaLabel = buildExerciseMeta(id);
+    const muscleLabel = eq.type === 'cardio' ? 'Cardio' : eq.target;
     return (
       <div
         key={id}
         className={`exercise-library-card w-full p-3 rounded-xl border border-gray-200 bg-white flex items-center justify-between ${categoryClass}`}
       >
-        <div className="flex items-center gap-3 text-left">
+        <div className="flex items-center gap-3 text-left flex-1 min-w-0">
           <div className="exercise-badge-wrapper">
             {renderMuscleBadge(badgeGroup)}
           </div>
-          <div>
+          <div className="min-w-0">
             <div className="font-bold workout-heading text-sm leading-tight">{eq.name}</div>
-            <div className="text-xs workout-muted">{eq.type === 'cardio' ? 'Cardio' : eq.target}</div>
+            <div className="exercise-meta">{metaLabel}</div>
             {isComingSoon && (
               <div className="text-[11px] text-gray-400 font-semibold">Coming Soon</div>
             )}
           </div>
         </div>
-        {allowAdd && (
+        <div className="flex flex-col items-end gap-2">
           <div className="flex items-center gap-2">
+            <span className="text-[11px] workout-muted">{muscleLabel}</span>
+            <button
+              type="button"
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); onToggleStarred?.(id); }}
+              className={`exercise-favorite-button ${isStarred ? 'is-starred' : ''}`}
+              aria-label={isStarred ? 'Remove from favorites' : 'Add to favorites'}
+            >
+              {renderStarIcon(isStarred)}
+            </button>
+          </div>
+          {allowAdd && (
             <button
               onClick={(e) => { e.preventDefault(); e.stopPropagation(); (onAction ? onAction(id) : onAddExerciseFromSearch?.(id)); }}
               className="cues-accent font-semibold text-sm"
             >
               {actionLabel}
             </button>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     );
   };
@@ -2978,20 +3012,33 @@ const Workout = ({ profile, history, cardioHistory, colorfulExerciseCards, onSel
   const renderExerciseTile = (id) => {
     const eq = EQUIPMENT_DB[id];
     if (!eq) return null;
-    const pinned = pinnedExercises.includes(id);
     const isComingSoon = !!eq.comingSoon;
     const allowAdd = hasTodayWorkout && !isRestDay && !isComingSoon;
     const categoryClass = colorfulExerciseCards ? resolveCategoryClass(eq.target || eq.muscles || '') : '';
     const badgeGroup = normalizeMuscleGroup(eq);
+    const isStarred = starredSet.has(id);
+    const metaLabel = buildExerciseMeta(id);
+    const muscleLabel = eq.type === 'cardio' ? 'Cardio' : eq.target;
     return (
       <div key={id} className={`tile text-left exercise-library-card ${categoryClass}`}>
         <div className="flex items-center justify-between mb-1">
           <div className="exercise-badge-wrapper">
             {renderMuscleBadge(badgeGroup)}
           </div>
-          <span className="text-[11px] workout-muted">{eq.type === 'cardio' ? 'Cardio' : eq.target}</span>
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] workout-muted">{muscleLabel}</span>
+            <button
+              type="button"
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); onToggleStarred?.(id); }}
+              className={`exercise-favorite-button ${isStarred ? 'is-starred' : ''}`}
+              aria-label={isStarred ? 'Remove from favorites' : 'Add to favorites'}
+            >
+              {renderStarIcon(isStarred)}
+            </button>
+          </div>
         </div>
         <div className="font-bold workout-heading text-sm leading-tight">{eq.name}</div>
+        <div className="exercise-meta">{metaLabel}</div>
         {isComingSoon && (
           <div className="text-[11px] text-gray-400 font-semibold mt-1">Coming Soon</div>
         )}
