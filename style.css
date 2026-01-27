@@ -1220,8 +1220,8 @@ textarea::placeholder {
 }
 
 .coach-strip {
-  margin-bottom: 10px;
-  padding: 10px 12px;
+  margin-bottom: 8px;
+  padding: 8px 11px;
   border-radius: 999px;
   background: radial-gradient(circle at top left, rgba(0, 255, 148, 0.12), transparent),
               var(--surface);
@@ -1230,6 +1230,7 @@ textarea::placeholder {
   display: flex;
   align-items: center;
   gap: 8px;
+  max-width: 100%;
 }
 
 .coach-strip-label {

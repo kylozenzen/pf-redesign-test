@@ -1186,19 +1186,34 @@ const motivationalQuotes = [
 
     const WORKOUT_PLANS = {
       Push: {
-        machines: ["chest_press","shoulder_press","pec_fly","cable_tricep"],
-        dumbbells: ["db_bench_press","db_shoulder_press"],
-        barbells: ["bb_bench","bb_overhead_press"]
+        // Simple push session – chest, shoulders, triceps
+        machines: ["chest_press", "shoulder_press", "pec_fly", "cable_tricep"],
+        dumbbells: [],
+        barbells: []
       },
       Pull: {
-        machines: ["lat_pulldown","seated_row","cable_bicep","ab_crunch"],
-        dumbbells: ["db_row","db_curl"],
-        barbells: ["bb_deadlift","bb_row"]
+        // Pull session – lats, upper back, biceps
+        machines: ["lat_pulldown", "seated_row", "cable_bicep"],
+        dumbbells: ["db_row"],
+        barbells: []
       },
       Legs: {
-        machines: ["leg_press","leg_extension","leg_curl","ab_crunch"],
-        dumbbells: ["db_goblet_squat","db_lunge"],
-        barbells: ["bb_squat"]
+        // Leg session – squat pattern + machine support
+        machines: ["leg_press", "leg_extension", "leg_curl"],
+        dumbbells: ["db_goblet_squat"],
+        barbells: []
+      },
+      Core: {
+        // Core-focused – keep it simple and tweak later if needed
+        machines: ["ab_crunch", "back_extension", "cable_woodchop"],
+        dumbbells: ["plank_bodyweight"],
+        barbells: []
+      },
+      "Full Body": {
+        // Full body – push, pull, legs in one circuit
+        machines: ["chest_press", "lat_pulldown", "leg_press"],
+        dumbbells: ["db_shoulder_press"],
+        barbells: []
       }
     };
 
@@ -3263,19 +3278,9 @@ const Workout = ({ profile, history, cardioHistory, colorfulExerciseCards, onSel
       <div className={`flex-1 overflow-y-auto pb-28 px-4 space-y-4 workout-scroll ${isSessionMode ? 'workout-scroll--with-footer' : ''}`}>
         {showIdleControls && (
           <Card className="space-y-3 workout-card mt-5 start-today-card">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <div className="text-xs font-bold workout-muted uppercase">Start Today</div>
-                <div className="text-base font-black workout-heading">Build today’s session</div>
-              </div>
-              <button
-                type="button"
-                className="btn-secondary-flat ps-tap text-xs"
-                onClick={() => setIsTemplatePickerOpen(true)}
-                disabled={isRestDay}
-              >
-                Start from template
-              </button>
+            <div>
+              <div className="text-xs font-bold workout-muted uppercase">Start Today</div>
+              <div className="text-base font-black workout-heading">Build today’s session</div>
             </div>
             <div className="space-y-2">
               <button
@@ -3295,6 +3300,36 @@ const Workout = ({ profile, history, cardioHistory, colorfulExerciseCards, onSel
                 }`}
               >
                 {libraryVisible ? 'Close library' : 'Browse library'}
+              </button>
+            </div>
+            <div className="flex items-center gap-2 whitespace-nowrap overflow-x-auto no-scrollbar pb-1">
+              <button
+                onClick={handleBrowseAll}
+                disabled={isRestDay}
+                className={`px-2 py-1 rounded-full border ${
+                  isRestDay ? 'border-gray-200 text-gray-400 cursor-not-allowed' : 'border-gray-200 text-gray-700'
+                }`}
+              >
+                {libraryVisible ? 'Close' : 'Browse all'}
+              </button>
+              <button
+                onClick={handleSearchFocus}
+                disabled={isRestDay}
+                className={`px-2 py-1 rounded-full border ${
+                  isRestDay ? 'border-gray-200 text-gray-400 cursor-not-allowed' : 'border-gray-200 text-gray-700'
+                }`}
+              >
+                Search
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsTemplatePickerOpen(true)}
+                disabled={isRestDay}
+                className={`px-2 py-1 rounded-full border ${
+                  isRestDay ? 'border-gray-200 text-gray-400 cursor-not-allowed' : 'border-gray-200 text-gray-700'
+                }`}
+              >
+                Template
               </button>
             </div>
             <div className="relative">
@@ -3388,30 +3423,18 @@ const Workout = ({ profile, history, cardioHistory, colorfulExerciseCards, onSel
                 </div>
                 <div className="text-[11px] workout-muted">{isSessionMode ? 'Log as you go' : 'Edit and start when ready'}</div>
               </div>
-              <div className="flex flex-col items-end gap-2">
-                {!isSessionMode && (
-                  <button
-                    type="button"
-                    className="btn-secondary-flat ps-tap text-xs"
-                    onClick={() => setIsTemplatePickerOpen(true)}
-                    disabled={isRestDay}
-                  >
-                    Start from template
-                  </button>
-                )}
-                <button
-                  onClick={() => {
-                    onCancelSession?.(isSessionMode, sessionHasLogged);
-                    setLibraryVisible(false);
-                    setSearchQuery('');
-                    setActiveFilter('All');
-                    setSwapState(null);
-                  }}
-                  className="session-cancel-button"
-                >
-                  {isSessionMode ? 'Cancel workout' : 'Cancel draft'}
-                </button>
-              </div>
+              <button
+                onClick={() => {
+                  onCancelSession?.(isSessionMode, sessionHasLogged);
+                  setLibraryVisible(false);
+                  setSearchQuery('');
+                  setActiveFilter('All');
+                  setSwapState(null);
+                }}
+                className="session-cancel-button"
+              >
+                {isSessionMode ? 'Cancel workout' : 'Cancel draft'}
+              </button>
             </div>
             {sessionEntries.length === 0 ? (
               <div className="text-xs workout-muted">Workout ready. Add exercises to get started.</div>
@@ -6927,14 +6950,14 @@ const CardioLogger = ({ id, onClose, onUpdateSessionLogs, sessionLogs, history, 
           .filter(Boolean);
         if (!exerciseIds.length) return;
         const nextStatus = activeSessionToday?.status === 'active' ? 'active' : 'draft';
-        updateSessionItemsByIds(exerciseIds, { status: nextStatus, createdFrom: 'template' });
+        updateSessionItemsByIds(exerciseIds, { status: nextStatus, createdFrom: 'generated' });
         setDraftPlan({
           date: todayKey,
           label: plan.name || 'Workout Template',
           exercises: exerciseIds,
           options: {},
           status: nextStatus,
-          createdFrom: 'template',
+          createdFrom: 'generated',
           type: todayWorkoutType
         });
         setDismissedDraftDate(null);
