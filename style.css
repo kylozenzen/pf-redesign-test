@@ -2083,6 +2083,138 @@ body.dark-mode .text-gray-400 {
   white-space: nowrap;
 }
 
+.coach-strip {
+  background: var(--surface);
+  background: var(--card-gradient), var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 12px 14px;
+  box-shadow: var(--shadow-card);
+}
+
+.coach-strip__label {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+
+.coach-strip__message {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.template-section {
+  display: grid;
+  gap: 8px;
+}
+
+.template-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.template-chip {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  padding: 8px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.15s ease, border 0.15s ease, background 0.15s ease;
+}
+
+.template-chip:hover {
+  background: var(--surface-2);
+}
+
+.template-chip:active {
+  transform: scale(0.97);
+}
+
+.template-chip.is-disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.locked-in-gate {
+  position: fixed;
+  inset: 0;
+  background: rgba(8, 10, 20, 0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  z-index: 200;
+  backdrop-filter: blur(6px);
+}
+
+.locked-in-card {
+  width: min(420px, 100%);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  padding: 24px;
+  box-shadow: var(--shadow-card-strong);
+  text-align: center;
+  display: grid;
+  gap: 12px;
+}
+
+.locked-in-eyebrow {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.locked-in-title {
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--text-strong);
+}
+
+.locked-in-subtitle {
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.locked-in-primary {
+  border: none;
+  background: var(--accent);
+  color: white;
+  padding: 12px 18px;
+  border-radius: 16px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.locked-in-primary:hover {
+  background: var(--accent-hover);
+}
+
+.locked-in-primary:active {
+  transform: scale(0.97);
+}
+
+.locked-in-secondary {
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
 @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes slideUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes expandHeight { from { max-height: 0; opacity: 0; } to { max-height: 2000px; opacity: 1; } }
