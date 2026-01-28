@@ -756,6 +756,28 @@ body.exercise-colors-off .exercise-badge-wrapper {
   gap: 12px;
 }
 
+.home-gym-wallet {
+  text-align: left;
+  cursor: pointer;
+  transition: transform 160ms var(--ease-standard);
+}
+
+.home-gym-wallet:active {
+  transform: scale(0.98);
+}
+
+.home-gym-wallet-cta {
+  align-self: flex-start;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
 .home-section-title {
   font-family: var(--font-display);
   font-size: 13px;
@@ -911,6 +933,106 @@ body.exercise-colors-off .exercise-badge-wrapper {
 
 .home-rest-action:active {
   transform: scale(0.97);
+}
+
+.gym-wallet-label {
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+}
+
+.gym-wallet-preview {
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-small);
+  background: color-mix(in srgb, var(--surface) 96%, var(--border));
+  padding: 12px;
+  min-height: 140px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.gym-wallet-preview img {
+  width: 100%;
+  max-height: 180px;
+  object-fit: contain;
+  border-radius: 14px;
+}
+
+.gym-wallet-placeholder {
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.gym-wallet-file {
+  width: 100%;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.gym-wallet-input,
+.gym-wallet-textarea {
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: var(--radius-control);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.gym-wallet-textarea {
+  resize: vertical;
+  min-height: 100px;
+}
+
+.gym-wallet-link {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--accent);
+  text-decoration: none;
+  word-break: break-word;
+}
+
+.gym-wallet-link:hover {
+  text-decoration: underline;
+}
+
+.gym-wallet-muted {
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.gym-wallet-locker {
+  position: relative;
+}
+
+.gym-wallet-locker .gym-wallet-input {
+  padding-right: 48px;
+}
+
+.gym-wallet-toggle {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  border-radius: 999px;
+  width: 34px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  cursor: pointer;
+  color: var(--text);
 }
 
 .browse-library-button {
@@ -1407,6 +1529,12 @@ textarea::placeholder {
   background: color-mix(in srgb, var(--accent) 35%, var(--muted));
   cursor: not-allowed;
   box-shadow: none;
+}
+
+.accent-button.gym-wallet-map-button {
+  width: auto;
+  padding: 10px 16px;
+  font-size: 12px;
 }
 
 .ghost-button {
