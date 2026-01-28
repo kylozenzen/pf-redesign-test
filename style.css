@@ -1320,7 +1320,7 @@ textarea::placeholder {
   width: 100%;
   max-width: 380px;
   max-height: 70vh;
-  padding: 14px 14px 10px;
+  padding: 16px 18px 12px;
   border-radius: var(--radius-card);
   background: var(--surface);
   background-image: var(--card-gradient), var(--surface);
@@ -1345,24 +1345,48 @@ textarea::placeholder {
 
 .template-picker-list {
   overflow-y: auto;
-  padding-top: 4px;
+  padding-top: 6px;
 }
 
 .template-picker-item {
+  position: relative;
   width: 100%;
   text-align: left;
-  margin-bottom: 6px;
-  padding: 10px 11px 9px;
+  margin-bottom: 8px;
+  padding: 12px 14px 11px 22px;
   border-radius: var(--radius-card);
   border: 1px solid var(--border);
   background: var(--surface);
   background-image: var(--card-gradient), var(--surface);
   box-shadow: var(--shadow-card), inset 0 1px 0 var(--hairline);
+  transition: transform 0.12s var(--ease-standard),
+              box-shadow 0.12s var(--ease-standard),
+              border-color 0.12s var(--ease-standard),
+              background-color 0.12s var(--ease-standard);
+}
+
+.template-picker-item::before {
+  content: '';
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+}
+
+.template-picker-item:hover,
+.template-picker-item:focus-visible {
+  transform: translateY(-1px);
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+  box-shadow: var(--shadow-card-strong);
 }
 
 .template-picker-name {
-  font-size: 0.9rem;
-  font-weight: 600;
+  font-size: 0.95rem;
+  font-weight: 700;
   color: var(--text-strong);
 }
 
@@ -1375,7 +1399,7 @@ textarea::placeholder {
 .template-picker-meta {
   font-size: 0.75rem;
   color: var(--muted);
-  margin-top: 4px;
+  margin-top: 6px;
 }
 
 .baseline-card {

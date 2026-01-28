@@ -2941,6 +2941,29 @@ const Workout = ({ profile, history, cardioHistory, colorfulExerciseCards, onSel
   const finishSummaryText = finishSummaryIntent ? `${finishSummaryBase} • ${finishSummaryIntent}` : finishSummaryBase;
 
   const templatePlans = useMemo(() => {
+    const labels = {
+      Push: {
+        name: 'Push Day',
+        description: 'Upper body – chest, shoulders & triceps.'
+      },
+      Pull: {
+        name: 'Pull Day',
+        description: 'Upper body – back & biceps focus.'
+      },
+      Legs: {
+        name: 'Legs Day',
+        description: 'Lower body – quads, glutes & hamstrings.'
+      },
+      Core: {
+        name: 'Core Day',
+        description: 'Core & abs – anti-slouch session.'
+      },
+      'Full Body': {
+        name: 'Full Body Day',
+        description: 'Balanced mix of upper & lower body.'
+      }
+    };
+
     return Object.entries(WORKOUT_PLANS).map(([name, plan]) => {
       const exerciseIds = [
         ...(plan.machines || []),
@@ -2948,10 +2971,11 @@ const Workout = ({ profile, history, cardioHistory, colorfulExerciseCards, onSel
         ...(plan.barbells || [])
       ];
       const uniqueIds = Array.from(new Set(exerciseIds));
+      const label = labels[name] || {};
       return {
         id: name.toLowerCase().replace(/\s+/g, '-'),
-        name: `${name} Day`,
-        description: `A focused ${name.toLowerCase()} template.`,
+        name: label.name || `${name} Day`,
+        description: label.description || `A focused ${name.toLowerCase()} template.`,
         exercises: uniqueIds.map(exerciseId => {
           const eq = EQUIPMENT_DB[exerciseId] || {};
           return {
