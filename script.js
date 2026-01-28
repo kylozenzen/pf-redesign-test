@@ -3302,36 +3302,6 @@ const Workout = ({ profile, history, cardioHistory, colorfulExerciseCards, onSel
                 {libraryVisible ? 'Close library' : 'Browse library'}
               </button>
             </div>
-            <div className="flex items-center gap-2 whitespace-nowrap overflow-x-auto no-scrollbar pb-1">
-              <button
-                onClick={handleBrowseAll}
-                disabled={isRestDay}
-                className={`px-2 py-1 rounded-full border ${
-                  isRestDay ? 'border-gray-200 text-gray-400 cursor-not-allowed' : 'border-gray-200 text-gray-700'
-                }`}
-              >
-                {libraryVisible ? 'Close' : 'Browse all'}
-              </button>
-              <button
-                onClick={handleSearchFocus}
-                disabled={isRestDay}
-                className={`px-2 py-1 rounded-full border ${
-                  isRestDay ? 'border-gray-200 text-gray-400 cursor-not-allowed' : 'border-gray-200 text-gray-700'
-                }`}
-              >
-                Search
-              </button>
-              <button
-                type="button"
-                onClick={() => setIsTemplatePickerOpen(true)}
-                disabled={isRestDay}
-                className={`px-2 py-1 rounded-full border ${
-                  isRestDay ? 'border-gray-200 text-gray-400 cursor-not-allowed' : 'border-gray-200 text-gray-700'
-                }`}
-              >
-                Template
-              </button>
-            </div>
             <div className="relative">
               <Icon name="Search" className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input
@@ -3355,25 +3325,33 @@ const Workout = ({ profile, history, cardioHistory, colorfulExerciseCards, onSel
               <div className="text-xs font-bold workout-muted uppercase">
                 {mode === 'draft' ? 'Draft mode' : 'Workout active'}
               </div>
-              <div className="flex items-center gap-3 text-xs font-semibold">
+              <div className="flex items-center gap-2">
                 <button
+                  type="button"
+                  className="pill-button"
                   onClick={handleBrowseAll}
                   disabled={isRestDay}
-                  className={`px-2 py-1 rounded-full border ${
-                    isRestDay ? 'border-gray-200 text-gray-400 cursor-not-allowed' : 'border-gray-200 text-gray-700'
-                  }`}
                 >
                   {libraryVisible ? 'Close' : 'Browse all'}
                 </button>
                 <button
+                  type="button"
+                  className="pill-button"
                   onClick={handleSearchFocus}
                   disabled={isRestDay}
-                  className={`px-2 py-1 rounded-full border ${
-                    isRestDay ? 'border-gray-200 text-gray-400 cursor-not-allowed' : 'border-gray-200 text-gray-700'
-                  }`}
                 >
                   Search
                 </button>
+                {mode === 'draft' && (
+                  <button
+                    type="button"
+                    className="pill-button"
+                    onClick={() => setIsTemplatePickerOpen(true)}
+                    disabled={isRestDay}
+                  >
+                    Template
+                  </button>
+                )}
               </div>
             </div>
           </Card>
@@ -3423,18 +3401,20 @@ const Workout = ({ profile, history, cardioHistory, colorfulExerciseCards, onSel
                 </div>
                 <div className="text-[11px] workout-muted">{isSessionMode ? 'Log as you go' : 'Edit and start when ready'}</div>
               </div>
-              <button
-                onClick={() => {
-                  onCancelSession?.(isSessionMode, sessionHasLogged);
-                  setLibraryVisible(false);
-                  setSearchQuery('');
-                  setActiveFilter('All');
-                  setSwapState(null);
-                }}
-                className="session-cancel-button"
-              >
-                {isSessionMode ? 'Cancel workout' : 'Cancel draft'}
-              </button>
+              <div className="flex items-end">
+                <button
+                  onClick={() => {
+                    onCancelSession?.(isSessionMode, sessionHasLogged);
+                    setLibraryVisible(false);
+                    setSearchQuery('');
+                    setActiveFilter('All');
+                    setSwapState(null);
+                  }}
+                  className="session-cancel-button"
+                >
+                  {isSessionMode ? 'Cancel workout' : 'Cancel draft'}
+                </button>
+              </div>
             </div>
             {sessionEntries.length === 0 ? (
               <div className="text-xs workout-muted">Workout ready. Add exercises to get started.</div>

@@ -481,7 +481,8 @@ body.app-shell {
   display: flex;
   flex-direction: column;
   height: 100%;
-  padding: 20px 18px calc(var(--bottom-nav-h) + env(safe-area-inset-bottom)) !important;
+  padding: 20px 18px !important;
+  padding-bottom: calc(var(--bottom-nav-h) + 16px) !important;
   overflow-y: auto;
   gap: 16px;
   justify-content: flex-start;
@@ -1217,6 +1218,23 @@ textarea::placeholder {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.pill-button {
+  padding: 4px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: color-mix(in srgb, var(--text) 82%, var(--muted));
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.pill-button:disabled {
+  color: var(--muted);
+  cursor: not-allowed;
+  opacity: 0.7;
 }
 
 .coach-strip {
